@@ -378,37 +378,29 @@ class Listing_Carousel_Element extends Element {
             $params["center_lng"] = $center_lng;
         }
 
-        $instance_id = isset( $this->id ) ? (string) $this->id : wp_unique_id( "cllc-" );
-
         $response = \cllc_fetch_listings( $params );
         $items = isset( $response["items"] ) && is_array( $response["items"] ) ? $response["items"] : [];
 
         if ( ! empty( $response["error"] ) ) {
-            echo "<div class=\"cl-listing-collection cl-carousel cl-listing-collection--error cl-carousel--error\"></div>";
             return;
         }
 
         if ( empty( $response["decoded"] ) || empty( $items ) ) {
-            echo "<div class=\"cl-listing-collection cl-carousel cl-listing-collection--empty cl-carousel--empty\"></div>";
             return;
         }
 
         $this->enqueue_assets();
 
-        $aspect_ratio = $this->resolve_aspect_ratio( $settings );
+        $aspect_class = $this->resolve_aspect_ratio_class( $settings );
         $clickable = ! empty( $settings["clickable"] );
         $target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
 
-        echo "<div class=\"cl-listing-collection cl-carousel\" data-cllc-id=\"" . esc_attr( $instance_id ) . "\" style=\"--cl-card-media-aspect:" . esc_attr( $aspect_ratio ) . ";\">";
-
         foreach ( $items as $item ) {
-            $this->render_card( $item, $clickable, $target );
+            $this->render_card( $item, $clickable, $target, $aspect_class );
         }
-
-        echo "</div>";
     }
 
-    private function render_card( array $item, bool $clickable, string $target ): void {
+    private function render_card( array $item, bool $clickable, string $target, string $aspect_class ): void {
         $listing_id = $item["listing_id"] ?? "";
         $link = $listing_id !== "" ? home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" ) : "";
 
@@ -444,6 +436,9 @@ class Listing_Carousel_Element extends Element {
         $is_clickable = $clickable && $link !== "";
 
         $card_classes = [ "cl-card" ];
+        if ( $aspect_class !== "" ) {
+            $card_classes[] = $aspect_class;
+        }
         if ( $is_clickable ) {
             $card_classes[] = "is-clickable";
         }
@@ -486,12 +481,12 @@ class Listing_Carousel_Element extends Element {
         echo "</div>";
     }
 
-    private function resolve_aspect_ratio( array $settings ): string {
+    private function resolve_aspect_ratio_class( array $settings ): string {
         $value = isset( $settings["image_aspect_ratio"] ) ? sanitize_text_field( (string) $settings["image_aspect_ratio"] ) : "4:3";
         $map = [
-            "1:1" => "1 / 1",
-            "4:3" => "4 / 3",
-            "16:9" => "16 / 9",
+            "1:1" => "cl-card--ratio-1-1",
+            "4:3" => "cl-card--ratio-4-3",
+            "16:9" => "cl-card--ratio-16-9",
         ];
 
         return $map[ $value ] ?? $map["4:3"];

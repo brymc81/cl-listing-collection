@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CL Listing Collection
  * Description: Bricks element that renders a listing carousel from the canonical cl-reso-link API.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Charleston Livability
  */
 
@@ -12,7 +12,7 @@ if ( ! defined( "ABSPATH" ) ) {
 
 define( "CLLC_PLUGIN_FILE", __FILE__ );
 define( "CLLC_PLUGIN_DIR", plugin_dir_path( __FILE__ ) );
-define( "CLLC_VERSION", "0.1.0" );
+define( "CLLC_VERSION", "0.1.1" );
 
 add_action( "init", "cllc_register_bricks_elements", 11 );
 add_action( "init", "cllc_maybe_clear_bricks_cache", 12 );

@@ -37,8 +37,8 @@ class Listing_Carousel_Element extends Element {
         $this->control_groups["advanced"] = [
             "title" => __( "Advanced", "cl-listing-collection" ),
         ];
-        $this->control_groups["layout"] = [
-            "title" => __( "Layout", "cl-listing-collection" ),
+        $this->control_groups["style"] = [
+            "title" => __( "Style", "cl-listing-collection" ),
         ];
     }
 
@@ -105,6 +105,12 @@ class Listing_Carousel_Element extends Element {
         $this->controls["property_subtype"] = [
             "group" => "data",
             "label" => __( "Property Subtype", "cl-listing-collection" ),
+            "type" => "text",
+        ];
+
+        $this->controls["architecture_type"] = [
+            "group" => "data",
+            "label" => __( "Architecture Type", "cl-listing-collection" ),
             "type" => "text",
         ];
 
@@ -198,18 +204,87 @@ class Listing_Carousel_Element extends Element {
             "type" => "number",
         ];
 
-        $this->controls["card_width"] = [
-            "group" => "layout",
-            "label" => __( "Card Width", "cl-listing-collection" ),
+        $this->controls["geo_shape_id"] = [
+            "group" => "advanced",
+            "label" => __( "Geo Shape ID", "cl-listing-collection" ),
             "type" => "text",
-            "default" => "320px",
         ];
 
-        $this->controls["gap"] = [
-            "group" => "layout",
-            "label" => __( "Gap", "cl-listing-collection" ),
-            "type" => "text",
-            "default" => "20px",
+        $this->controls["card_background"] = [
+            "group" => "style",
+            "label" => __( "Card Background", "cl-listing-collection" ),
+            "type" => "background",
+            "css" => [
+                [
+                    "property" => "background",
+                    "selector" => ".cl-card",
+                ],
+            ],
+        ];
+
+        $this->controls["card_border_radius"] = [
+            "group" => "style",
+            "label" => __( "Card Border Radius", "cl-listing-collection" ),
+            "type" => "number",
+            "units" => true,
+            "css" => [
+                [
+                    "property" => "border-radius",
+                    "selector" => ".cl-card",
+                ],
+            ],
+            "placeholder" => "10px",
+        ];
+
+        $this->controls["price_typography"] = [
+            "group" => "style",
+            "label" => __( "Price Typography", "cl-listing-collection" ),
+            "type" => "typography",
+            "css" => [
+                [
+                    "property" => "font",
+                    "selector" => ".cl-card-price",
+                ],
+            ],
+        ];
+
+        $this->controls["meta_typography"] = [
+            "group" => "style",
+            "label" => __( "Meta Typography", "cl-listing-collection" ),
+            "type" => "typography",
+            "css" => [
+                [
+                    "property" => "font",
+                    "selector" => ".cl-card-meta",
+                ],
+            ],
+        ];
+
+        $this->controls["image_aspect_ratio"] = [
+            "group" => "style",
+            "label" => __( "Image Aspect Ratio", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "1:1" => __( "1:1", "cl-listing-collection" ),
+                "4:3" => __( "4:3", "cl-listing-collection" ),
+                "16:9" => __( "16:9", "cl-listing-collection" ),
+            ],
+            "default" => "4:3",
+        ];
+
+        $this->controls["clickable"] = [
+            "group" => "style",
+            "label" => __( "Clickable Cards", "cl-listing-collection" ),
+            "type" => "checkbox",
+            "default" => true,
+        ];
+
+        $this->controls["open_in_new_tab"] = [
+            "group" => "style",
+            "label" => __( "Open In New Tab", "cl-listing-collection" ),
+            "type" => "checkbox",
+            "default" => false,
+            "required" => [ "clickable", "=", true ],
         ];
     }
 
@@ -251,6 +326,7 @@ class Listing_Carousel_Element extends Element {
             "property_subtype",
             "mls_area",
             "q",
+            "geo_shape_id",
         ];
 
         foreach ( $text_fields as $field ) {
@@ -260,6 +336,14 @@ class Listing_Carousel_Element extends Element {
                 if ( $clean !== "" ) {
                     $params[ $field ] = $clean;
                 }
+            }
+        }
+
+        $architecture_type = $settings["architecture_type"] ?? null;
+        if ( ! \cllc_is_blank( $architecture_type ) ) {
+            $clean = sanitize_text_field( (string) $architecture_type );
+            if ( $clean !== "" ) {
+                $params["style"] = $clean;
             }
         }
 
@@ -294,102 +378,130 @@ class Listing_Carousel_Element extends Element {
             $params["center_lng"] = $center_lng;
         }
 
-        $card_width = \cllc_sanitize_css_size( $settings["card_width"] ?? "320px", "320px" );
-        $gap = \cllc_sanitize_css_size( $settings["gap"] ?? "20px", "20px" );
-
         $instance_id = isset( $this->id ) ? (string) $this->id : wp_unique_id( "cllc-" );
-        $scope_id = "brxe-" . sanitize_html_class( $instance_id );
 
         $response = \cllc_fetch_listings( $params );
         $items = isset( $response["items"] ) && is_array( $response["items"] ) ? $response["items"] : [];
 
         if ( ! empty( $response["error"] ) ) {
-            echo "<div class=\"cl-carousel cl-carousel--error\"></div>";
+            echo "<div class=\"cl-listing-collection cl-carousel cl-listing-collection--error cl-carousel--error\"></div>";
             return;
         }
 
         if ( empty( $response["decoded"] ) || empty( $items ) ) {
-            echo "<div class=\"cl-carousel cl-carousel--empty\"></div>";
+            echo "<div class=\"cl-listing-collection cl-carousel cl-listing-collection--empty cl-carousel--empty\"></div>";
             return;
         }
 
-        echo "<div class=\"cl-carousel\" data-cllc-id=\"" . esc_attr( $instance_id ) . "\">";
-        echo "<style>";
-        echo "#" . esc_attr( $scope_id ) . " .cl-carousel__track{display:flex;gap:" . esc_attr( $gap ) . ";overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card{flex:0 0 " . esc_attr( $card_width ) . ";scroll-snap-align:start;border:1px solid #e2e2e2;border-radius:10px;overflow:hidden;background:#fff;color:inherit;text-decoration:none;display:block;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__media{width:100%;aspect-ratio:4/3;background:#f2f2f2;overflow:hidden;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__media img{width:100%;height:100%;object-fit:cover;display:block;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__body{padding:12px 14px;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__price{font-weight:700;margin-bottom:4px;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__address{font-size:0.95rem;margin-bottom:8px;}";
-        echo "#" . esc_attr( $scope_id ) . " .cl-card__meta{display:flex;gap:10px;font-size:0.85rem;color:#555;}";
-        echo "</style>";
+        $this->enqueue_assets();
 
-        echo "<div class=\"cl-carousel__track\">";
+        $aspect_ratio = $this->resolve_aspect_ratio( $settings );
+        $clickable = ! empty( $settings["clickable"] );
+        $target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
+
+        echo "<div class=\"cl-listing-collection cl-carousel\" data-cllc-id=\"" . esc_attr( $instance_id ) . "\" style=\"--cl-card-media-aspect:" . esc_attr( $aspect_ratio ) . ";\">";
 
         foreach ( $items as $item ) {
-            $listing_id = $item["listing_id"] ?? "";
-            $link = $listing_id !== "" ? home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" ) : "#";
-
-            $media_primary = "";
-            if ( isset( $item["media"] ) && is_array( $item["media"] ) ) {
-                $media_primary = $item["media"]["primary"] ?? "";
-            }
-
-            $address = "";
-            if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
-                $address = $item["address"]["display"] ?? "";
-            }
-
-            $bedrooms = null;
-            $bathrooms = null;
-            $sqft = null;
-            if ( isset( $item["structure"] ) && is_array( $item["structure"] ) ) {
-                $bedrooms = $item["structure"]["bedrooms_total"] ?? null;
-                $bathrooms = $item["structure"]["bathrooms_total"] ?? null;
-                $sqft = $item["structure"]["building_area_total"] ?? null;
-            }
-
-            $price_value = null;
-            if ( isset( $item["market"] ) && is_array( $item["market"] ) ) {
-                $status_value = $item["market"]["status"] ?? ( $item["status"] ?? "" );
-                $is_closed = \cllc_is_closed_status( $status_value );
-                if ( $is_closed && isset( $item["market"]["close_price"] ) && $item["market"]["close_price"] !== "" && $item["market"]["close_price"] !== null ) {
-                    $price_value = $item["market"]["close_price"];
-                } else {
-                    $price_value = $item["market"]["list_price"] ?? null;
-                }
-            }
-
-            $price = \cllc_format_price( $price_value );
-
-            echo "<a class=\"cl-card\" href=\"" . esc_url( $link ) . "\">";
-            if ( $media_primary !== "" ) {
-                echo "<div class=\"cl-card__media\"><img src=\"" . esc_url( $media_primary ) . "\" alt=\"" . esc_attr( $address ) . "\" loading=\"lazy\" /></div>";
-            }
-            echo "<div class=\"cl-card__body\">";
-            if ( $price !== "" ) {
-                echo "<div class=\"cl-card__price\">" . esc_html( $price ) . "</div>";
-            }
-            if ( $address !== "" ) {
-                echo "<div class=\"cl-card__address\">" . esc_html( $address ) . "</div>";
-            }
-            echo "<div class=\"cl-card__meta\">";
-            if ( $bedrooms !== null && $bedrooms !== "" ) {
-                echo "<span>" . esc_html( $bedrooms ) . " Beds</span>";
-            }
-            if ( $bathrooms !== null && $bathrooms !== "" ) {
-                echo "<span>" . esc_html( $bathrooms ) . " Baths</span>";
-            }
-            if ( $sqft !== null && $sqft !== "" ) {
-                echo "<span>" . esc_html( $sqft ) . " SqFt</span>";
-            }
-            echo "</div>";
-            echo "</div>";
-            echo "</a>";
+            $this->render_card( $item, $clickable, $target );
         }
 
         echo "</div>";
+    }
+
+    private function render_card( array $item, bool $clickable, string $target ): void {
+        $listing_id = $item["listing_id"] ?? "";
+        $link = $listing_id !== "" ? home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" ) : "";
+
+        $media_primary = "";
+        if ( isset( $item["media"] ) && is_array( $item["media"] ) ) {
+            $media_primary = $item["media"]["primary"] ?? "";
+        }
+
+        $address = "";
+        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
+            $address = $item["address"]["display"] ?? "";
+        }
+
+        $bedrooms = null;
+        $bathrooms = null;
+        $sqft = null;
+        if ( isset( $item["structure"] ) && is_array( $item["structure"] ) ) {
+            $bedrooms = $item["structure"]["bedrooms_total"] ?? null;
+            $bathrooms = $item["structure"]["bathrooms_total"] ?? null;
+            $sqft = $item["structure"]["building_area_total"] ?? null;
+        }
+
+        $price_value = null;
+        if ( isset( $item["market"] ) && is_array( $item["market"] ) ) {
+            if ( ! \cllc_is_blank( $item["market"]["close_price"] ?? null ) ) {
+                $price_value = $item["market"]["close_price"];
+            } else {
+                $price_value = $item["market"]["list_price"] ?? null;
+            }
+        }
+
+        $price = \cllc_format_price( $price_value );
+        $is_clickable = $clickable && $link !== "";
+
+        $card_classes = [ "cl-card" ];
+        if ( $is_clickable ) {
+            $card_classes[] = "is-clickable";
+        }
+
+        $attributes = "class=\"" . esc_attr( implode( " ", $card_classes ) ) . "\"";
+        if ( $is_clickable ) {
+            $attributes .= " data-url=\"" . esc_url( $link ) . "\" data-target=\"" . esc_attr( $target ) . "\"";
+        }
+
+        echo "<div " . $attributes . ">";
+        if ( $media_primary !== "" ) {
+            echo "<div class=\"cl-card-media\"><img src=\"" . esc_url( $media_primary ) . "\" alt=\"" . esc_attr( $address ) . "\" loading=\"lazy\" /></div>";
+        }
+        echo "<div class=\"cl-card-body\">";
+        if ( $price !== "" ) {
+            echo "<div class=\"cl-card-price\">" . esc_html( $price ) . "</div>";
+        }
+        if ( $address !== "" ) {
+            echo "<div class=\"cl-card-address\">" . esc_html( $address ) . "</div>";
+        }
+
+        $meta_items = [];
+        if ( $bedrooms !== null && $bedrooms !== "" ) {
+            $meta_items[] = esc_html( $bedrooms ) . " Beds";
+        }
+        if ( $bathrooms !== null && $bathrooms !== "" ) {
+            $meta_items[] = esc_html( $bathrooms ) . " Baths";
+        }
+        if ( $sqft !== null && $sqft !== "" ) {
+            $meta_items[] = esc_html( $sqft ) . " SqFt";
+        }
+        if ( ! empty( $meta_items ) ) {
+            echo "<div class=\"cl-card-meta\">";
+            foreach ( $meta_items as $meta_item ) {
+                echo "<span class=\"cl-meta-item\">" . $meta_item . "</span>";
+            }
+            echo "</div>";
+        }
         echo "</div>";
+        echo "</div>";
+    }
+
+    private function resolve_aspect_ratio( array $settings ): string {
+        $value = isset( $settings["image_aspect_ratio"] ) ? sanitize_text_field( (string) $settings["image_aspect_ratio"] ) : "4:3";
+        $map = [
+            "1:1" => "1 / 1",
+            "4:3" => "4 / 3",
+            "16:9" => "16 / 9",
+        ];
+
+        return $map[ $value ] ?? $map["4:3"];
+    }
+
+    private function enqueue_assets(): void {
+        $style_url = plugins_url( "assets/css/listing-collection.css", CLLC_PLUGIN_FILE );
+        $script_url = plugins_url( "assets/js/listing-collection.js", CLLC_PLUGIN_FILE );
+
+        wp_enqueue_style( "cllc-listing-collection", $style_url, [], CLLC_VERSION );
+        wp_enqueue_script( "cllc-listing-collection", $script_url, [], CLLC_VERSION, true );
     }
 }

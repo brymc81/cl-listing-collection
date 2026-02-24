@@ -35,10 +35,16 @@ Advanced:
 - `center_lat`
 - `center_lng`
 - `zoom`
+- `geo_shape_id`
 
-Layout:
-- `card_width` (default `320px`)
-- `gap` (default `20px`)
+Style:
+- `card_background`
+- `card_border_radius`
+- `price_typography`
+- `meta_typography`
+- `image_aspect_ratio` (`1:1`, `4:3`, `16:9`)
+- `clickable`
+- `open_in_new_tab`
 
 ## Canonical Contract Fields Used
 
@@ -54,6 +60,6 @@ Layout:
 ## Notes
 
 - SSR is the baseline. No JS slider library is used.
-- Each element instance emits instance-scoped CSS for card width and gap.
+- Layout is controlled by the parent container (no internal grid/width enforcement).
 - Per-request in-memory cache prevents duplicate identical API calls within a single page render.
 - This element does not implement search UI or client-side filtering.

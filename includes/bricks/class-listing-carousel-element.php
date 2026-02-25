@@ -67,17 +67,6 @@ class Listing_Carousel_Element extends Element {
             "default" => "relevance",
         ];
 
-        $this->controls["order"] = [
-            "group" => "query",
-            "label" => __( "Order", "cl-listing-collection" ),
-            "type" => "select",
-            "options" => [
-                "desc" => __( "Desc", "cl-listing-collection" ),
-                "asc" => __( "Asc", "cl-listing-collection" ),
-            ],
-            "default" => "desc",
-        ];
-
         $this->controls["status"] = [
             "group" => "query",
             "label" => __( "Status", "cl-listing-collection" ),
@@ -129,6 +118,17 @@ class Listing_Carousel_Element extends Element {
             "group" => "query",
             "label" => __( "Geo Shape ID", "cl-listing-collection" ),
             "type" => "text",
+        ];
+
+        $this->controls["order"] = [
+            "group" => "query",
+            "label" => __( "Order", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "desc" => __( "Desc", "cl-listing-collection" ),
+                "asc" => __( "Asc", "cl-listing-collection" ),
+            ],
+            "default" => "desc",
         ];
 
         $this->controls["city"] = [

@@ -31,8 +31,8 @@ class Listing_Carousel_Element extends Element {
     }
 
     public function set_control_groups() {
-        $this->control_groups["data"] = [
-            "title" => __( "Data", "cl-listing-collection" ),
+        $this->control_groups["query"] = [
+            "title" => __( "Query", "cl-listing-collection" ),
         ];
         $this->control_groups["advanced"] = [
             "title" => __( "Advanced", "cl-listing-collection" ),
@@ -44,7 +44,7 @@ class Listing_Carousel_Element extends Element {
 
     public function set_controls() {
         $this->controls["limit"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Limit", "cl-listing-collection" ),
             "type" => "number",
             "min" => 1,
@@ -53,7 +53,7 @@ class Listing_Carousel_Element extends Element {
         ];
 
         $this->controls["sort"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Sort", "cl-listing-collection" ),
             "type" => "select",
             "options" => [
@@ -68,7 +68,7 @@ class Listing_Carousel_Element extends Element {
         ];
 
         $this->controls["order"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Order", "cl-listing-collection" ),
             "type" => "select",
             "options" => [
@@ -79,109 +79,132 @@ class Listing_Carousel_Element extends Element {
         ];
 
         $this->controls["status"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Status", "cl-listing-collection" ),
-            "type" => "text",
+            "type" => "select",
+            "options" => [
+                "Active" => __( "Active", "cl-listing-collection" ),
+                "Active Under Contract" => __( "Active Under Contract", "cl-listing-collection" ),
+                "Closed" => __( "Closed", "cl-listing-collection" ),
+                "Pending" => __( "Pending", "cl-listing-collection" ),
+            ],
+            "multiple" => true,
+            "placeholder" => __( "Select status", "cl-listing-collection" ),
         ];
 
-        $this->controls["city"] = [
-            "group" => "data",
-            "label" => __( "City", "cl-listing-collection" ),
-            "type" => "text",
+        $this->controls["property_type"] = [
+            "group" => "query",
+            "label" => __( "Property Type", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_property_type_options(),
+            "multiple" => true,
+            "placeholder" => __( "Select property types", "cl-listing-collection" ),
+        ];
+
+        $this->controls["property_subtype"] = [
+            "group" => "query",
+            "label" => __( "Property Subtype", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_property_subtype_options(),
+            "multiple" => true,
+            "placeholder" => __( "Select property subtypes", "cl-listing-collection" ),
+        ];
+
+        $this->controls["mls_area"] = [
+            "group" => "query",
+            "label" => __( "MLS Area", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_mls_area_options(),
+            "multiple" => true,
+            "placeholder" => __( "Select MLS areas", "cl-listing-collection" ),
         ];
 
         $this->controls["postal_code"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Postal Code", "cl-listing-collection" ),
             "type" => "text",
         ];
 
-        $this->controls["property_type"] = [
-            "group" => "data",
-            "label" => __( "Property Type", "cl-listing-collection" ),
+        $this->controls["geo_shape_id"] = [
+            "group" => "query",
+            "label" => __( "Geo Shape ID", "cl-listing-collection" ),
             "type" => "text",
         ];
 
-        $this->controls["property_subtype"] = [
-            "group" => "data",
-            "label" => __( "Property Subtype", "cl-listing-collection" ),
+        $this->controls["city"] = [
+            "group" => "query",
+            "label" => __( "City", "cl-listing-collection" ),
             "type" => "text",
         ];
 
         $this->controls["architecture_type"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Architecture Type", "cl-listing-collection" ),
             "type" => "text",
         ];
 
-        $this->controls["mls_area"] = [
-            "group" => "data",
-            "label" => __( "MLS Area", "cl-listing-collection" ),
-            "type" => "text",
-        ];
-
         $this->controls["price_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Price Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["price_max"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Price Max", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["beds_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Beds Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["baths_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Baths Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["sqft_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Sqft Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["sqft_max"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Sqft Max", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["acres_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Acres Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["acres_max"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Acres Max", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["year_min"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Year Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["year_max"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Year Max", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["q"] = [
-            "group" => "data",
+            "group" => "query",
             "label" => __( "Query", "cl-listing-collection" ),
             "type" => "text",
         ];
@@ -202,12 +225,6 @@ class Listing_Carousel_Element extends Element {
             "group" => "advanced",
             "label" => __( "Zoom", "cl-listing-collection" ),
             "type" => "number",
-        ];
-
-        $this->controls["geo_shape_id"] = [
-            "group" => "advanced",
-            "label" => __( "Geo Shape ID", "cl-listing-collection" ),
-            "type" => "text",
         ];
 
         $this->controls["card_background"] = [
@@ -244,6 +261,18 @@ class Listing_Carousel_Element extends Element {
                 [
                     "property" => "font",
                     "selector" => ".cl-card-price",
+                ],
+            ],
+        ];
+
+        $this->controls["address_typography"] = [
+            "group" => "style",
+            "label" => __( "Address Typography", "cl-listing-collection" ),
+            "type" => "typography",
+            "css" => [
+                [
+                    "property" => "font",
+                    "selector" => ".cl-card-address",
                 ],
             ],
         ];
@@ -318,13 +347,26 @@ class Listing_Carousel_Element extends Element {
             "order" => $order,
         ];
 
-        $text_fields = [
+        $multi_select_fields = [
             "status",
-            "city",
-            "postal_code",
             "property_type",
             "property_subtype",
             "mls_area",
+        ];
+
+        foreach ( $multi_select_fields as $field ) {
+            $value = $settings[ $field ] ?? null;
+            $serialized = $field === "mls_area"
+                ? $this->normalize_mls_area_value( $value )
+                : $this->normalize_multi_select_value( $value );
+            if ( null !== $serialized ) {
+                $params[ $field ] = $serialized;
+            }
+        }
+
+        $text_fields = [
+            "city",
+            "postal_code",
             "q",
             "geo_shape_id",
         ];
@@ -453,6 +495,10 @@ class Listing_Carousel_Element extends Element {
             echo "<div class=\"cl-card-media\"><img src=\"" . esc_url( $media_primary ) . "\" alt=\"" . esc_attr( $address ) . "\" loading=\"lazy\" /></div>";
         }
         echo "<div class=\"cl-card-body\">";
+        $status_badge = $this->render_status_badge( $item );
+        if ( $status_badge !== "" ) {
+            echo $status_badge;
+        }
         if ( $price !== "" ) {
             echo "<div class=\"cl-card-price\">" . esc_html( $price ) . "</div>";
         }
@@ -498,5 +544,183 @@ class Listing_Carousel_Element extends Element {
 
         wp_enqueue_style( "cllc-listing-collection", $style_url, [], CLLC_VERSION );
         wp_enqueue_script( "cllc-listing-collection", $script_url, [], CLLC_VERSION, true );
+    }
+
+    private function get_property_type_options(): array {
+        $defaults = [
+            "Residential" => __( "Residential", "cl-listing-collection" ),
+            "Multi-Family" => __( "Multi-Family", "cl-listing-collection" ),
+            "Vacant Land" => __( "Vacant Land", "cl-listing-collection" ),
+            "Commercial" => __( "Commercial", "cl-listing-collection" ),
+            "Business Opportunity" => __( "Business Opportunity", "cl-listing-collection" ),
+            "Farm" => __( "Farm", "cl-listing-collection" ),
+        ];
+
+        $options = apply_filters( "cllc_property_type_options", $defaults );
+        if ( ! is_array( $options ) ) {
+            return $defaults;
+        }
+
+        return $options;
+    }
+
+    private function get_property_subtype_options(): array {
+        $defaults = [
+            "Single Family Detached" => __( "Single Family Detached", "cl-listing-collection" ),
+            "Single Family Attached" => __( "Single Family Attached", "cl-listing-collection" ),
+        ];
+
+        $options = apply_filters( "cllc_property_subtype_options", $defaults );
+        if ( ! is_array( $options ) ) {
+            return $defaults;
+        }
+
+        return $options;
+    }
+
+    private function get_mls_area_options(): array {
+        if ( ! function_exists( "cl_reso_link_get_mls_areas" ) ) {
+            return [];
+        }
+
+        $areas = cl_reso_link_get_mls_areas();
+        if ( ! is_array( $areas ) ) {
+            return [];
+        }
+
+        $options = [];
+        foreach ( $areas as $area ) {
+            if ( ! is_array( $area ) ) {
+                continue;
+            }
+
+            $code = $area["code"] ?? "";
+            $label = $area["label"] ?? "";
+            if ( \cllc_is_blank( $code ) || \cllc_is_blank( $label ) ) {
+                continue;
+            }
+
+            $options[ (string) $code ] = (string) $label;
+        }
+
+        return $options;
+    }
+
+    private function normalize_multi_select_value( $value, array $label_map = [] ): ?string {
+        if ( \cllc_is_blank( $value ) ) {
+            return null;
+        }
+
+        if ( is_array( $value ) ) {
+            $parts = [];
+            foreach ( $value as $entry ) {
+                if ( \cllc_is_blank( $entry ) ) {
+                    continue;
+                }
+
+                $clean = sanitize_text_field( (string) $entry );
+                if ( $clean !== "" ) {
+                    $parts[] = $this->map_multi_select_value( $clean, $label_map );
+                }
+            }
+
+            $parts = array_values( array_unique( array_filter( $parts, "strlen" ) ) );
+            if ( empty( $parts ) ) {
+                return null;
+            }
+
+            return implode( ",", $parts );
+        }
+
+        $clean = sanitize_text_field( (string) $value );
+        if ( $clean === "" ) {
+            return null;
+        }
+
+        $parts = strpos( $clean, "," ) !== false ? array_map( "trim", explode( ",", $clean ) ) : [ $clean ];
+        $resolved = [];
+        foreach ( $parts as $part ) {
+            if ( $part === "" ) {
+                continue;
+            }
+
+            $mapped = $this->map_multi_select_value( $part, $label_map );
+            if ( $mapped !== "" ) {
+                $resolved[] = $mapped;
+            }
+        }
+
+        $resolved = array_values( array_unique( $resolved ) );
+        if ( empty( $resolved ) ) {
+            return null;
+        }
+
+        return implode( ",", $resolved );
+    }
+
+    private function map_multi_select_value( string $value, array $label_map ): string {
+        if ( empty( $label_map ) ) {
+            return $value;
+        }
+
+        $key = strtolower( trim( $value ) );
+        return $label_map[ $key ] ?? $value;
+    }
+
+    private function normalize_mls_area_value( $value ): ?string {
+        $options = $this->get_mls_area_options();
+        if ( empty( $options ) ) {
+            return $this->normalize_multi_select_value( $value );
+        }
+
+        $label_map = [];
+        foreach ( $options as $code => $label ) {
+            $label_key = strtolower( trim( (string) $label ) );
+            if ( $label_key === "" ) {
+                continue;
+            }
+
+            $label_map[ $label_key ] = (string) $code;
+        }
+
+        return $this->normalize_multi_select_value( $value, $label_map );
+    }
+
+    private function render_status_badge( array $item ): string {
+        $status = $item["status"] ?? "";
+        if ( \cllc_is_blank( $status ) ) {
+            return "";
+        }
+
+        $label = trim( (string) $status );
+        if ( $label === "" ) {
+            return "";
+        }
+
+        $class = $this->resolve_status_class( $label );
+        $classes = [ "cl-card-status" ];
+        if ( $class !== "" ) {
+            $classes[] = $class;
+        }
+
+        return "<div class=\"" . esc_attr( implode( " ", $classes ) ) . "\">" . esc_html( $label ) . "</div>";
+    }
+
+    private function resolve_status_class( string $status ): string {
+        $normalized = strtolower( trim( preg_replace( '/\s+/', ' ', $status ) ) );
+
+        if ( $normalized === "active" ) {
+            return "cl-status-active";
+        }
+
+        if ( $normalized === "active under contract" ) {
+            return "cl-status-active-under-contract";
+        }
+
+        if ( $normalized === "closed" || \cllc_is_closed_status( $status ) ) {
+            return "cl-status-closed";
+        }
+
+        return "";
     }
 }

@@ -227,6 +227,17 @@ class Listing_Carousel_Element extends Element {
             "type" => "number",
         ];
 
+        $this->controls["structured_data_mode"] = [
+            "group" => "advanced",
+            "label" => __( "Structured Data", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "off" => __( "Off", "cl-listing-collection" ),
+                "itemlist" => __( "ItemList", "cl-listing-collection" ),
+            ],
+            "default" => "itemlist",
+        ];
+
         $this->controls["card_background"] = [
             "group" => "style",
             "label" => __( "Card Background", "cl-listing-collection" ),
@@ -319,6 +330,12 @@ class Listing_Carousel_Element extends Element {
 
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
+        $structured_data_mode = isset( $settings["structured_data_mode"] )
+            ? sanitize_text_field( (string) $settings["structured_data_mode"] )
+            : "itemlist";
+        if ( ! in_array( $structured_data_mode, [ "off", "itemlist" ], true ) ) {
+            $structured_data_mode = "itemlist";
+        }
 
         $limit = \cllc_sanitize_int( $settings["limit"] ?? null );
         if ( null === $limit ) {
@@ -440,6 +457,15 @@ class Listing_Carousel_Element extends Element {
         foreach ( $items as $item ) {
             $this->render_card( $item, $clickable, $target, $aspect_class );
         }
+
+        if ( $structured_data_mode === "itemlist" && ! $this->is_listing_detail_context() ) {
+            $schema = $this->build_itemlist_schema( $items, $settings );
+            if ( is_array( $schema ) ) {
+                echo "<script type=\"application/ld+json\">";
+                echo wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+                echo "</script>";
+            }
+        }
     }
 
     private function render_card( array $item, bool $clickable, string $target, string $aspect_class ): void {
@@ -536,6 +562,179 @@ class Listing_Carousel_Element extends Element {
         ];
 
         return $map[ $value ] ?? $map["4:3"];
+    }
+
+    private function is_listing_detail_context(): bool {
+        if ( function_exists( "get_query_var" ) ) {
+            $listing_id = get_query_var( "listingId" );
+            if ( is_numeric( $listing_id ) ) {
+                return true;
+            }
+        }
+
+        global $wp;
+        if ( is_object( $wp ) && isset( $wp->matched_rule ) && is_string( $wp->matched_rule ) ) {
+            if ( $wp->matched_rule === "^listing/([0-9]+)/?$" ) {
+                return true;
+            }
+        }
+
+        if ( function_exists( "cl_listing_router_is_seo_listing_context" ) ) {
+            return (bool) cl_listing_router_is_seo_listing_context();
+        }
+
+        return false;
+    }
+
+    private function build_itemlist_schema( array $items, array $settings ): ?array {
+        if ( empty( $items ) ) {
+            return null;
+        }
+
+        $item_list_elements = [];
+        $position = 1;
+
+        foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
+            }
+
+            $item_url = $this->resolve_item_url( $item );
+            if ( $item_url === "" ) {
+                continue;
+            }
+
+            $item_name = $this->resolve_item_name( $item );
+            if ( $item_name === "" ) {
+                continue;
+            }
+
+            $item_list_elements[] = [
+                "@type" => "ListItem",
+                "position" => $position++,
+                "url" => $item_url,
+                "name" => $item_name,
+                "item" => [
+                    "@type" => "RealEstateListing",
+                    "@id" => $item_url,
+                ],
+            ];
+        }
+
+        if ( empty( $item_list_elements ) ) {
+            return null;
+        }
+
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => "ItemList",
+            "itemListElement" => $item_list_elements,
+        ];
+
+        $schema_name = $this->resolve_schema_name( $settings );
+        if ( $schema_name !== "" ) {
+            $schema["name"] = $schema_name;
+        }
+
+        $schema = $this->strip_schema_empty_values( $schema );
+        if ( ! is_array( $schema ) || empty( $schema ) ) {
+            return null;
+        }
+
+        return $schema;
+    }
+
+    private function resolve_item_url( array $item ): string {
+        $listing_id = $item["listing_id"] ?? "";
+        if ( \cllc_is_blank( $listing_id ) ) {
+            return "";
+        }
+
+        $link = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
+        $link = esc_url_raw( $link );
+
+        return $link !== "" ? $link : "";
+    }
+
+    private function resolve_item_name( array $item ): string {
+        $address = "";
+        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
+            $address = $item["address"]["display"] ?? "";
+        }
+
+        $address = trim( (string) $address );
+        return $address;
+    }
+
+    private function resolve_schema_name( array $settings ): string {
+        $name = $settings["title"] ?? "";
+        if ( \cllc_is_blank( $name ) ) {
+            $name = $settings["heading"] ?? "";
+        }
+
+        if ( \cllc_is_blank( $name ) ) {
+            return "";
+        }
+
+        $clean = sanitize_text_field( (string) $name );
+        return $clean !== "" ? $clean : "";
+    }
+
+    private function strip_schema_empty_values( $value ) {
+        if ( is_array( $value ) ) {
+            $is_list = $this->is_list_array( $value );
+            $clean = [];
+
+            foreach ( $value as $key => $entry ) {
+                $stripped = $this->strip_schema_empty_values( $entry );
+                if ( $this->schema_value_is_empty( $stripped ) ) {
+                    continue;
+                }
+
+                if ( $is_list ) {
+                    $clean[] = $stripped;
+                } else {
+                    $clean[ $key ] = $stripped;
+                }
+            }
+
+            return empty( $clean ) ? null : $clean;
+        }
+
+        if ( is_string( $value ) ) {
+            $trimmed = trim( $value );
+            return $trimmed === "" ? null : $value;
+        }
+
+        return $value;
+    }
+
+    private function schema_value_is_empty( $value ): bool {
+        if ( null === $value ) {
+            return true;
+        }
+
+        if ( is_string( $value ) ) {
+            return trim( $value ) === "";
+        }
+
+        if ( is_array( $value ) ) {
+            return empty( $value );
+        }
+
+        return false;
+    }
+
+    private function is_list_array( array $value ): bool {
+        $expected = 0;
+        foreach ( array_keys( $value ) as $key ) {
+            if ( $key !== $expected ) {
+                return false;
+            }
+            $expected++;
+        }
+
+        return true;
     }
 
     private function enqueue_assets(): void {

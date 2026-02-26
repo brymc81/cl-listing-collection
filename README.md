@@ -36,6 +36,7 @@ Advanced:
 - `center_lng`
 - `zoom`
 - `geo_shape_id`
+- `structured_data_mode` (`off`, `itemlist`)
 
 Style:
 - `card_background`
@@ -63,3 +64,10 @@ Style:
 - Layout is controlled by the parent container (no internal grid/width enforcement).
 - Per-request in-memory cache prevents duplicate identical API calls within a single page render.
 - This element does not implement search UI or client-side filtering.
+
+## Structured Data (ItemList)
+
+- Enabled by default.
+- Disabled automatically on listing detail pages.
+- Emits one ItemList per element instance.
+- References RealEstateListing via `@id` only (no duplicate data).

@@ -58,6 +58,13 @@ Style:
 - `structure.building_area_total`
 - `media.primary`
 
+## Canonical Address Field
+
+- This plugin consumes `address.display` only.
+- It does not access raw MLS fields.
+- Canonical authority lives in `cl-reso-link`.
+- Breaking contract changes require consumer updates.
+
 ## Notes
 
 - SSR is the baseline. No JS slider library is used.
@@ -70,4 +77,5 @@ Style:
 - Enabled by default.
 - Disabled automatically on listing detail pages.
 - Emits one ItemList per element instance.
+- `ListItem.name` is sourced from `address.display` when present.
 - References RealEstateListing via `@id` only (no duplicate data).

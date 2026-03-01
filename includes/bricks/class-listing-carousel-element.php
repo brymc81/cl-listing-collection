@@ -477,10 +477,7 @@ class Listing_Carousel_Element extends Element {
             $media_primary = $item["media"]["primary"] ?? "";
         }
 
-        $address = "";
-        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
-            $address = $item["address"]["display"] ?? "";
-        }
+        $address = $item["address"]["display"] ?? ""; // Canonical contract: address.display (cl-reso-link authority)
 
         $bedrooms = null;
         $bathrooms = null;
@@ -605,20 +602,21 @@ class Listing_Carousel_Element extends Element {
             }
 
             $item_name = $this->resolve_item_name( $item );
-            if ( $item_name === "" ) {
-                continue;
-            }
-
-            $item_list_elements[] = [
+            $list_item = [
                 "@type" => "ListItem",
                 "position" => $position++,
                 "url" => $item_url,
-                "name" => $item_name,
                 "item" => [
                     "@type" => "RealEstateListing",
                     "@id" => $item_url,
                 ],
             ];
+
+            if ( $item_name !== "" ) {
+                $list_item["name"] = $item_name;
+            }
+
+            $item_list_elements[] = $list_item;
         }
 
         if ( empty( $item_list_elements ) ) {
@@ -657,10 +655,7 @@ class Listing_Carousel_Element extends Element {
     }
 
     private function resolve_item_name( array $item ): string {
-        $address = "";
-        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
-            $address = $item["address"]["display"] ?? "";
-        }
+        $address = $item["address"]["display"] ?? ""; // Canonical contract: address.display (cl-reso-link authority)
 
         $address = trim( (string) $address );
         return $address;

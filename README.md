@@ -2,6 +2,15 @@
 
 Provides a native Bricks element, `CL Listing Carousel`, that renders SSR listing cards from the canonical `cl-reso-link` endpoint at `/api/properties/search`. This plugin is constrained to an editorial embed block and does not provide or own search UI.
 
+## Documentation Scope
+
+This README is plugin-specific behavior only.
+
+Authoritative API and contract docs are maintained in:
+- `../cl-reso-link/docs/api.md`
+- `../cl-reso-link/docs/architecture.md`
+- `../cl-reso-link/docs/DOCS_AUTHORITY.md`
+
 ## Element
 
 Name: `cl-listing-carousel`

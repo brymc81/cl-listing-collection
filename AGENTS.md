@@ -1,5 +1,9 @@
 # CL Listing Collection — Agent Notes
 
+## Documentation Scope
+- Plugin-specific implementation guidance only.
+- Authoritative API contract details are maintained in `../cl-reso-link/docs/*`.
+
 ## Boundaries
 
 - Consumer only. No MLS normalization logic.

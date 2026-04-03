@@ -9,6 +9,7 @@ if ( ! defined( "ABSPATH" ) ) {
 }
 
 class Listing_Carousel_Element extends Element {
+    // Carousel is an implementation variant within cl-listing-collection, not a separate plugin
 
     public $name = "cl-listing-carousel";
     public $category = "charleston-livability";
@@ -43,12 +44,20 @@ class Listing_Carousel_Element extends Element {
     }
 
     public function set_controls() {
+        $this->controls["community_key"] = [
+            "group" => "query",
+            "label" => __( "Community Key", "cl-listing-collection" ),
+            "type" => "text",
+            "required" => true,
+            "hasDynamicData" => true,
+        ];
+
         $this->controls["limit"] = [
             "group" => "query",
             "label" => __( "Limit", "cl-listing-collection" ),
             "type" => "number",
             "min" => 1,
-            "max" => 100,
+            "max" => 50,
             "default" => 4,
         ];
 
@@ -57,67 +66,11 @@ class Listing_Carousel_Element extends Element {
             "label" => __( "Sort", "cl-listing-collection" ),
             "type" => "select",
             "options" => [
-                "relevance" => __( "Relevance", "cl-listing-collection" ),
-                "newest" => __( "Newest", "cl-listing-collection" ),
                 "modified" => __( "Modified", "cl-listing-collection" ),
                 "price" => __( "Price", "cl-listing-collection" ),
                 "dom" => __( "Days on Market", "cl-listing-collection" ),
-                "distance" => __( "Distance", "cl-listing-collection" ),
             ],
-            "default" => "relevance",
-        ];
-
-        $this->controls["status"] = [
-            "group" => "query",
-            "label" => __( "Status", "cl-listing-collection" ),
-            "type" => "select",
-            "options" => [
-                "Active" => __( "Active", "cl-listing-collection" ),
-                "Active Under Contract" => __( "Active Under Contract", "cl-listing-collection" ),
-                "Closed" => __( "Closed", "cl-listing-collection" ),
-                "Pending" => __( "Pending", "cl-listing-collection" ),
-            ],
-            "multiple" => true,
-            "placeholder" => __( "Select status", "cl-listing-collection" ),
-        ];
-
-        $this->controls["property_type"] = [
-            "group" => "query",
-            "label" => __( "Property Type", "cl-listing-collection" ),
-            "type" => "select",
-            "options" => $this->get_property_type_options(),
-            "multiple" => true,
-            "placeholder" => __( "Select property types", "cl-listing-collection" ),
-        ];
-
-        $this->controls["property_subtype"] = [
-            "group" => "query",
-            "label" => __( "Property Subtype", "cl-listing-collection" ),
-            "type" => "select",
-            "options" => $this->get_property_subtype_options(),
-            "multiple" => true,
-            "placeholder" => __( "Select property subtypes", "cl-listing-collection" ),
-        ];
-
-        $this->controls["mls_area"] = [
-            "group" => "query",
-            "label" => __( "MLS Area", "cl-listing-collection" ),
-            "type" => "select",
-            "options" => $this->get_mls_area_options(),
-            "multiple" => true,
-            "placeholder" => __( "Select MLS areas", "cl-listing-collection" ),
-        ];
-
-        $this->controls["postal_code"] = [
-            "group" => "query",
-            "label" => __( "Postal Code", "cl-listing-collection" ),
-            "type" => "text",
-        ];
-
-        $this->controls["geo_shape_id"] = [
-            "group" => "query",
-            "label" => __( "Geo Shape ID", "cl-listing-collection" ),
-            "type" => "text",
+            "default" => "modified",
         ];
 
         $this->controls["order"] = [
@@ -131,16 +84,21 @@ class Listing_Carousel_Element extends Element {
             "default" => "desc",
         ];
 
-        $this->controls["city"] = [
+        $this->controls["property_type"] = [
             "group" => "query",
-            "label" => __( "City", "cl-listing-collection" ),
-            "type" => "text",
+            "label" => __( "Property Type", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_property_type_options(),
+            "placeholder" => __( "Select property type", "cl-listing-collection" ),
         ];
 
-        $this->controls["architecture_type"] = [
+        $this->controls["property_subtype"] = [
             "group" => "query",
-            "label" => __( "Architecture Type", "cl-listing-collection" ),
-            "type" => "text",
+            "label" => __( "Property Subtype", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_property_subtype_options(),
+            "multiple" => true,
+            "placeholder" => __( "Select property subtypes", "cl-listing-collection" ),
         ];
 
         $this->controls["price_min"] = [
@@ -164,66 +122,6 @@ class Listing_Carousel_Element extends Element {
         $this->controls["baths_min"] = [
             "group" => "query",
             "label" => __( "Baths Min", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["sqft_min"] = [
-            "group" => "query",
-            "label" => __( "Sqft Min", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["sqft_max"] = [
-            "group" => "query",
-            "label" => __( "Sqft Max", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["acres_min"] = [
-            "group" => "query",
-            "label" => __( "Acres Min", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["acres_max"] = [
-            "group" => "query",
-            "label" => __( "Acres Max", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["year_min"] = [
-            "group" => "query",
-            "label" => __( "Year Min", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["year_max"] = [
-            "group" => "query",
-            "label" => __( "Year Max", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["q"] = [
-            "group" => "query",
-            "label" => __( "Query", "cl-listing-collection" ),
-            "type" => "text",
-        ];
-
-        $this->controls["center_lat"] = [
-            "group" => "advanced",
-            "label" => __( "Center Latitude", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["center_lng"] = [
-            "group" => "advanced",
-            "label" => __( "Center Longitude", "cl-listing-collection" ),
-            "type" => "number",
-        ];
-
-        $this->controls["zoom"] = [
-            "group" => "advanced",
-            "label" => __( "Zoom", "cl-listing-collection" ),
             "type" => "number",
         ];
 
@@ -330,6 +228,15 @@ class Listing_Carousel_Element extends Element {
 
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
+
+        $community_key = $this->resolve_dynamic_text_setting( $settings["community_key"] ?? "" );
+        if ( "" === $community_key ) {
+            $this->log_warning( "Missing required community_key; rendering empty state." );
+            $this->enqueue_assets();
+            $this->render_empty_state();
+            return;
+        }
+
         $structured_data_mode = isset( $settings["structured_data_mode"] )
             ? sanitize_text_field( (string) $settings["structured_data_mode"] )
             : "itemlist";
@@ -343,118 +250,81 @@ class Listing_Carousel_Element extends Element {
         }
         if ( $limit < 1 ) {
             $limit = 1;
-        } elseif ( $limit > 100 ) {
-            $limit = 100;
+        } elseif ( $limit > 50 ) {
+            $limit = 50;
         }
 
-        $allowed_sorts = [ "relevance", "newest", "modified", "price", "dom", "distance" ];
-        $sort = isset( $settings["sort"] ) ? sanitize_text_field( (string) $settings["sort"] ) : "relevance";
-        if ( ! in_array( $sort, $allowed_sorts, true ) ) {
-            $sort = "relevance";
-        }
-
-        $order = isset( $settings["order"] ) ? strtolower( sanitize_text_field( (string) $settings["order"] ) ) : "desc";
-        if ( ! in_array( $order, [ "asc", "desc" ], true ) ) {
-            $order = "desc";
-        }
+        $sort_value = isset( $settings["sort"] ) ? sanitize_text_field( (string) $settings["sort"] ) : "modified";
+        $order_value = isset( $settings["order"] ) ? sanitize_text_field( (string) $settings["order"] ) : "desc";
+        $normalized_sort = $this->normalize_sort_value( $sort_value, $order_value );
 
         $params = [
+            "community_key" => $community_key,
             "limit" => $limit,
-            "sort" => $sort,
-            "order" => $order,
+            "sort" => $normalized_sort["sort"],
+            "order" => $normalized_sort["order"],
         ];
 
-        $multi_select_fields = [
-            "status",
-            "property_type",
-            "property_subtype",
-            "mls_area",
-        ];
-
-        foreach ( $multi_select_fields as $field ) {
-            $value = $settings[ $field ] ?? null;
-            $serialized = $field === "mls_area"
-                ? $this->normalize_mls_area_value( $value )
-                : $this->normalize_multi_select_value( $value );
-            if ( null !== $serialized ) {
-                $params[ $field ] = $serialized;
-            }
+        $property_type = isset( $settings["property_type"] ) ? sanitize_text_field( (string) $settings["property_type"] ) : "";
+        if ( "" !== $property_type ) {
+            $params["property_type"] = $property_type;
         }
 
-        $text_fields = [
-            "city",
-            "postal_code",
-            "q",
-            "geo_shape_id",
-        ];
-
-        foreach ( $text_fields as $field ) {
-            $value = $settings[ $field ] ?? null;
-            if ( ! \cllc_is_blank( $value ) ) {
-                $clean = sanitize_text_field( (string) $value );
-                if ( $clean !== "" ) {
-                    $params[ $field ] = $clean;
-                }
-            }
+        $property_sub_types = $this->normalize_multi_select_value( $settings["property_subtype"] ?? null );
+        if ( [] !== $property_sub_types ) {
+            $params["property_subtype"] = implode( ",", $property_sub_types );
         }
 
-        $architecture_type = $settings["architecture_type"] ?? null;
-        if ( ! \cllc_is_blank( $architecture_type ) ) {
-            $clean = sanitize_text_field( (string) $architecture_type );
-            if ( $clean !== "" ) {
-                $params["style"] = $clean;
-            }
+        $price_min = \cllc_sanitize_float( $settings["price_min"] ?? null );
+        $price_max = \cllc_sanitize_float( $settings["price_max"] ?? null );
+        if ( null !== $price_min && null !== $price_max && $price_min > $price_max ) {
+            $price_min = null;
+            $price_max = null;
+        }
+        if ( null !== $price_min ) {
+            $params["price_min"] = $price_min;
+        }
+        if ( null !== $price_max ) {
+            $params["price_max"] = $price_max;
         }
 
-        $numeric_fields = [
-            "price_min",
-            "price_max",
-            "beds_min",
-            "baths_min",
-            "sqft_min",
-            "sqft_max",
-            "acres_min",
-            "acres_max",
-            "year_min",
-            "year_max",
-            "zoom",
-        ];
-
-        foreach ( $numeric_fields as $field ) {
-            $value = \cllc_sanitize_int( $settings[ $field ] ?? null );
-            if ( null !== $value ) {
-                $params[ $field ] = $value;
-            }
+        $beds_min = \cllc_sanitize_int( $settings["beds_min"] ?? null );
+        if ( null !== $beds_min && $beds_min > 0 ) {
+            $params["beds_min"] = $beds_min;
         }
 
-        $center_lat = \cllc_sanitize_float( $settings["center_lat"] ?? null );
-        if ( null !== $center_lat ) {
-            $params["center_lat"] = $center_lat;
-        }
-
-        $center_lng = \cllc_sanitize_float( $settings["center_lng"] ?? null );
-        if ( null !== $center_lng ) {
-            $params["center_lng"] = $center_lng;
+        $baths_min = \cllc_sanitize_int( $settings["baths_min"] ?? null );
+        if ( null !== $baths_min && $baths_min > 0 ) {
+            $params["baths_min"] = $baths_min;
         }
 
         $response = \cllc_fetch_listings( $params );
         $items = isset( $response["items"] ) && is_array( $response["items"] ) ? $response["items"] : [];
 
         if ( ! empty( $response["error"] ) ) {
-            return;
+            $this->log_warning( "Listings request failed; rendering empty state." );
+            $items = [];
         }
 
-        if ( empty( $response["decoded"] ) || empty( $items ) ) {
-            return;
+        if ( $limit > 0 && count( $items ) > $limit ) {
+            $items = array_slice( $items, 0, $limit );
         }
 
         $this->enqueue_assets();
+
+        if ( empty( $items ) ) {
+            $this->render_empty_state();
+            return;
+        }
 
         $aspect_class = $this->resolve_aspect_ratio_class( $settings );
         $clickable = ! empty( $settings["clickable"] );
         $target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
 
         foreach ( $items as $item ) {
+            if ( ! is_array( $item ) ) {
+                continue;
+            }
             $this->render_card( $item, $clickable, $target, $aspect_class );
         }
 
@@ -470,14 +340,20 @@ class Listing_Carousel_Element extends Element {
 
     private function render_card( array $item, bool $clickable, string $target, string $aspect_class ): void {
         $listing_id = $item["listing_id"] ?? "";
-        $link = $listing_id !== "" ? home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" ) : "";
+        $link = "";
+        if ( ! \cllc_is_blank( $listing_id ) ) {
+            $link = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
+        }
 
         $media_primary = "";
         if ( isset( $item["media"] ) && is_array( $item["media"] ) ) {
-            $media_primary = $item["media"]["primary"] ?? "";
+            $media_primary = isset( $item["media"]["primary"] ) ? trim( (string) $item["media"]["primary"] ) : "";
         }
 
-        $address = $item["address"]["display"] ?? ""; // Canonical contract: address.display (cl-reso-link authority)
+        $address = "";
+        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
+            $address = isset( $item["address"]["display"] ) ? trim( (string) $item["address"]["display"] ) : "";
+        }
 
         $bedrooms = null;
         $bathrooms = null;
@@ -490,18 +366,15 @@ class Listing_Carousel_Element extends Element {
 
         $price_value = null;
         if ( isset( $item["market"] ) && is_array( $item["market"] ) ) {
-            if ( ! \cllc_is_blank( $item["market"]["close_price"] ?? null ) ) {
-                $price_value = $item["market"]["close_price"];
-            } else {
-                $price_value = $item["market"]["list_price"] ?? null;
-            }
+            $price_value = $item["market"]["list_price"] ?? null;
+            // TODO: reintroduce status badge using canonical market.status only
         }
 
         $price = \cllc_format_price( $price_value );
-        $is_clickable = $clickable && $link !== "";
+        $is_clickable = $clickable && "" !== $link;
 
         $card_classes = [ "cl-card" ];
-        if ( $aspect_class !== "" ) {
+        if ( "" !== $aspect_class ) {
             $card_classes[] = $aspect_class;
         }
         if ( $is_clickable ) {
@@ -513,31 +386,28 @@ class Listing_Carousel_Element extends Element {
             $attributes .= " data-url=\"" . esc_url( $link ) . "\" data-target=\"" . esc_attr( $target ) . "\"";
         }
 
+        // NOTE: This card structure is intended for future reuse across plugins (home search, collections, etc.)
         echo "<div " . $attributes . ">";
-        if ( $media_primary !== "" ) {
+        if ( "" !== $media_primary ) {
             echo "<div class=\"cl-card-media\"><img src=\"" . esc_url( $media_primary ) . "\" alt=\"" . esc_attr( $address ) . "\" loading=\"lazy\" /></div>";
         }
         echo "<div class=\"cl-card-body\">";
-        $status_badge = $this->render_status_badge( $item );
-        if ( $status_badge !== "" ) {
-            echo $status_badge;
-        }
-        if ( $price !== "" ) {
+        if ( "" !== $price ) {
             echo "<div class=\"cl-card-price\">" . esc_html( $price ) . "</div>";
         }
-        if ( $address !== "" ) {
+        if ( "" !== $address ) {
             echo "<div class=\"cl-card-address\">" . esc_html( $address ) . "</div>";
         }
 
         $meta_items = [];
-        if ( $bedrooms !== null && $bedrooms !== "" ) {
-            $meta_items[] = esc_html( $bedrooms ) . " Beds";
+        if ( ! \cllc_is_blank( $bedrooms ) ) {
+            $meta_items[] = esc_html( (string) $bedrooms ) . " Beds";
         }
-        if ( $bathrooms !== null && $bathrooms !== "" ) {
-            $meta_items[] = esc_html( $bathrooms ) . " Baths";
+        if ( ! \cllc_is_blank( $bathrooms ) ) {
+            $meta_items[] = esc_html( (string) $bathrooms ) . " Baths";
         }
-        if ( $sqft !== null && $sqft !== "" ) {
-            $meta_items[] = esc_html( $sqft ) . " SqFt";
+        if ( ! \cllc_is_blank( $sqft ) ) {
+            $meta_items[] = esc_html( (string) $sqft ) . " SqFt";
         }
         if ( ! empty( $meta_items ) ) {
             echo "<div class=\"cl-card-meta\">";
@@ -548,6 +418,10 @@ class Listing_Carousel_Element extends Element {
         }
         echo "</div>";
         echo "</div>";
+    }
+
+    private function render_empty_state(): void {
+        echo '<div class="cl-listing-collection__empty">' . esc_html__( 'No listings available.', 'cl-listing-collection' ) . '</div>';
     }
 
     private function resolve_aspect_ratio_class( array $settings ): string {
@@ -655,7 +529,7 @@ class Listing_Carousel_Element extends Element {
     }
 
     private function resolve_item_name( array $item ): string {
-        $address = $item["address"]["display"] ?? ""; // Canonical contract: address.display (cl-reso-link authority)
+        $address = $item["address"]["display"] ?? "";
 
         $address = trim( (string) $address );
         return $address;
@@ -742,12 +616,10 @@ class Listing_Carousel_Element extends Element {
 
     private function get_property_type_options(): array {
         $defaults = [
-            "Residential" => __( "Residential", "cl-listing-collection" ),
-            "Multi-Family" => __( "Multi-Family", "cl-listing-collection" ),
+            "Single Family Detached" => __( "Single Family Detached", "cl-listing-collection" ),
+            "Single Family Attached" => __( "Single Family Attached", "cl-listing-collection" ),
+            "Multi Family" => __( "Multi Family", "cl-listing-collection" ),
             "Vacant Land" => __( "Vacant Land", "cl-listing-collection" ),
-            "Commercial" => __( "Commercial", "cl-listing-collection" ),
-            "Business Opportunity" => __( "Business Opportunity", "cl-listing-collection" ),
-            "Farm" => __( "Farm", "cl-listing-collection" ),
         ];
 
         $options = apply_filters( "cllc_property_type_options", $defaults );
@@ -772,149 +644,98 @@ class Listing_Carousel_Element extends Element {
         return $options;
     }
 
-    private function get_mls_area_options(): array {
-        if ( ! function_exists( "cl_reso_link_get_mls_areas" ) ) {
-            return [];
-        }
-
-        $areas = cl_reso_link_get_mls_areas();
-        if ( ! is_array( $areas ) ) {
-            return [];
-        }
-
-        $options = [];
-        foreach ( $areas as $area ) {
-            if ( ! is_array( $area ) ) {
-                continue;
-            }
-
-            $code = $area["code"] ?? "";
-            $label = $area["label"] ?? "";
-            if ( \cllc_is_blank( $code ) || \cllc_is_blank( $label ) ) {
-                continue;
-            }
-
-            $options[ (string) $code ] = (string) $label;
-        }
-
-        return $options;
-    }
-
-    private function normalize_multi_select_value( $value, array $label_map = [] ): ?string {
+    /**
+     * @param mixed $value
+     * @return array<int, string>
+     */
+    private function normalize_multi_select_value( $value ): array {
         if ( \cllc_is_blank( $value ) ) {
-            return null;
+            return [];
         }
 
+        $parts = [];
         if ( is_array( $value ) ) {
-            $parts = [];
-            foreach ( $value as $entry ) {
-                if ( \cllc_is_blank( $entry ) ) {
-                    continue;
-                }
-
-                $clean = sanitize_text_field( (string) $entry );
-                if ( $clean !== "" ) {
-                    $parts[] = $this->map_multi_select_value( $clean, $label_map );
-                }
-            }
-
-            $parts = array_values( array_unique( array_filter( $parts, "strlen" ) ) );
-            if ( empty( $parts ) ) {
-                return null;
-            }
-
-            return implode( ",", $parts );
+            $parts = $value;
+        } elseif ( is_string( $value ) ) {
+            $parts = strpos( $value, "," ) !== false ? explode( ",", $value ) : [ $value ];
         }
 
-        $clean = sanitize_text_field( (string) $value );
-        if ( $clean === "" ) {
-            return null;
+        if ( [] === $parts ) {
+            return [];
         }
 
-        $parts = strpos( $clean, "," ) !== false ? array_map( "trim", explode( ",", $clean ) ) : [ $clean ];
         $resolved = [];
         foreach ( $parts as $part ) {
-            if ( $part === "" ) {
+            if ( ! is_scalar( $part ) ) {
                 continue;
             }
 
-            $mapped = $this->map_multi_select_value( $part, $label_map );
-            if ( $mapped !== "" ) {
-                $resolved[] = $mapped;
+            $clean = trim( sanitize_text_field( (string) $part ) );
+            if ( "" !== $clean ) {
+                $resolved[] = $clean;
             }
         }
 
-        $resolved = array_values( array_unique( $resolved ) );
-        if ( empty( $resolved ) ) {
-            return null;
+        if ( [] === $resolved ) {
+            return [];
         }
 
-        return implode( ",", $resolved );
+        return array_values( array_unique( $resolved ) );
     }
 
-    private function map_multi_select_value( string $value, array $label_map ): string {
-        if ( empty( $label_map ) ) {
-            return $value;
+    private function normalize_sort_value( string $sort_value, string $order_value ): array {
+        $defaults = [
+            "modified" => "desc",
+            "price" => "asc",
+            "dom" => "desc",
+        ];
+
+        $sort = strtolower( trim( $sort_value ) );
+        if ( ! isset( $defaults[ $sort ] ) ) {
+            $sort = "modified";
         }
 
-        $key = strtolower( trim( $value ) );
-        return $label_map[ $key ] ?? $value;
+        $order = strtolower( trim( $order_value ) );
+        if ( "asc" !== $order && "desc" !== $order ) {
+            $order = $defaults[ $sort ];
+        }
+
+        return [
+            "sort" => $sort,
+            "order" => $order,
+        ];
     }
 
-    private function normalize_mls_area_value( $value ): ?string {
-        $options = $this->get_mls_area_options();
-        if ( empty( $options ) ) {
-            return $this->normalize_multi_select_value( $value );
+    private function resolve_dynamic_text_setting( $value ): string {
+        if ( ! is_scalar( $value ) ) {
+            return "";
         }
 
-        $label_map = [];
-        foreach ( $options as $code => $label ) {
-            $label_key = strtolower( trim( (string) $label ) );
-            if ( $label_key === "" ) {
-                continue;
+        $resolved = (string) $value;
+        $post_id = (int) get_the_ID();
+
+        if ( function_exists( "cl_resolve_dynamic_value" ) ) {
+            $resolved = cl_resolve_dynamic_value( $value, $post_id );
+        } elseif ( class_exists( "\\Bricks\\Helpers" ) && method_exists( "\\Bricks\\Helpers", "render_dynamic_data" ) ) {
+            $dynamic = \Bricks\Helpers::render_dynamic_data( $resolved, $post_id );
+            if ( is_scalar( $dynamic ) ) {
+                $resolved = (string) $dynamic;
             }
-
-            $label_map[ $label_key ] = (string) $code;
         }
 
-        return $this->normalize_multi_select_value( $value, $label_map );
-    }
-
-    private function render_status_badge( array $item ): string {
-        $status = $item["status"] ?? "";
-        if ( \cllc_is_blank( $status ) ) {
+        $resolved = trim( sanitize_text_field( $resolved ) );
+        if ( "" === $resolved || $this->is_unresolved_dynamic_placeholder( $resolved ) ) {
             return "";
         }
 
-        $label = trim( (string) $status );
-        if ( $label === "" ) {
-            return "";
-        }
-
-        $class = $this->resolve_status_class( $label );
-        $classes = [ "cl-card-status" ];
-        if ( $class !== "" ) {
-            $classes[] = $class;
-        }
-
-        return "<div class=\"" . esc_attr( implode( " ", $classes ) ) . "\">" . esc_html( $label ) . "</div>";
+        return $resolved;
     }
 
-    private function resolve_status_class( string $status ): string {
-        $normalized = strtolower( trim( preg_replace( '/\s+/', ' ', $status ) ) );
+    private function is_unresolved_dynamic_placeholder( string $value ): bool {
+        return 1 === preg_match( '/^\{[a-z0-9_:-]+\}$/i', trim( $value ) );
+    }
 
-        if ( $normalized === "active" ) {
-            return "cl-status-active";
-        }
-
-        if ( $normalized === "active under contract" ) {
-            return "cl-status-active-under-contract";
-        }
-
-        if ( $normalized === "closed" || \cllc_is_closed_status( $status ) ) {
-            return "cl-status-closed";
-        }
-
-        return "";
+    private function log_warning( string $message ): void {
+        error_log( "[CL Listing Collection] " . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
     }
 }

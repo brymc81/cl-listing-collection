@@ -140,26 +140,6 @@ function cllc_sanitize_float( $value ): ?float {
 }
 
 /**
- * Sanitize a CSS size token or fall back to default.
- */
-function cllc_sanitize_css_size( $value, string $default ): string {
-    if ( cllc_is_blank( $value ) ) {
-        return $default;
-    }
-
-    if ( is_numeric( $value ) ) {
-        return (string) $value . "px";
-    }
-
-    $value = trim( (string) $value );
-    if ( preg_match( '/^\d+(?:\.\d+)?(px|rem|em|vw|vh|%)$/', $value ) ) {
-        return $value;
-    }
-
-    return $default;
-}
-
-/**
  * Format price values for display.
  */
 function cllc_format_price( $value ): string {
@@ -174,21 +154,9 @@ function cllc_format_price( $value ): string {
 }
 
 /**
- * Determine if a listing status indicates a closed/sold state.
- */
-function cllc_is_closed_status( $status ): bool {
-    if ( cllc_is_blank( $status ) ) {
-        return false;
-    }
-
-    $status = strtolower( trim( (string) $status ) );
-    return strpos( $status, "closed" ) !== false || strpos( $status, "sold" ) !== false;
-}
-
-/**
  * Fetch listings via the canonical cl-reso-link endpoint.
  *
- * @return array{ok:bool,code:int,items:array,error:bool,decoded:bool}
+ * @return array{ok:bool,code:int,items:array,error:bool,decoded:bool,state:string}
  */
 function cllc_fetch_listings( array $params ): array {
     static $cache = [];
@@ -217,6 +185,7 @@ function cllc_fetch_listings( array $params ): array {
             "items" => [],
             "error" => true,
             "decoded" => false,
+            "state" => "",
         ];
         return $cache[ $cache_key ];
     }
@@ -226,17 +195,60 @@ function cllc_fetch_listings( array $params ): array {
     $decoded = json_decode( $body, true );
     $decoded_ok = json_last_error() === JSON_ERROR_NONE;
     $items = [];
-    if ( $decoded_ok && is_array( $decoded ) && isset( $decoded["data"]["items"] ) && is_array( $decoded["data"]["items"] ) ) {
-        $items = $decoded["data"]["items"];
+    $state = "";
+    $shape_valid = false;
+    if ( $decoded_ok && is_array( $decoded ) ) {
+        if ( isset( $decoded["data"]["items"] ) && is_array( $decoded["data"]["items"] ) ) {
+            $items = $decoded["data"]["items"];
+            $shape_valid = true;
+        } elseif ( cllc_is_soft_failure_payload( $decoded ) ) {
+            $items = $decoded["items"];
+            $state = strtolower( trim( (string) $decoded["state"] ) );
+            $shape_valid = true;
+        } else {
+            cllc_log_unexpected_response_shape( $decoded );
+        }
     }
 
+    $ok = $code >= 200 && $code < 300;
+    $error = ! $ok || ! $decoded_ok || ! $shape_valid;
+
     $cache[ $cache_key ] = [
-        "ok" => $code >= 200 && $code < 300,
+        "ok" => $ok,
         "code" => $code,
         "items" => $items,
-        "error" => false,
+        "error" => $error,
         "decoded" => $decoded_ok,
+        "state" => $state,
     ];
 
     return $cache[ $cache_key ];
+}
+
+/**
+ * @param array<string, mixed> $payload
+ */
+function cllc_is_soft_failure_payload( array $payload ): bool {
+    if ( ! isset( $payload["state"] ) || ! is_string( $payload["state"] ) ) {
+        return false;
+    }
+    if ( ! isset( $payload["items"] ) || ! is_array( $payload["items"] ) ) {
+        return false;
+    }
+
+    $state = strtolower( trim( $payload["state"] ) );
+    return in_array( $state, [ "no_context", "invalid_context", "engine_error" ], true );
+}
+
+/**
+ * @param array<string, mixed> $payload
+ */
+function cllc_log_unexpected_response_shape( array $payload ): void {
+    $root_keys = implode( ",", array_keys( $payload ) );
+    $data_keys = "";
+    if ( isset( $payload["data"] ) && is_array( $payload["data"] ) ) {
+        $data_keys = implode( ",", array_keys( $payload["data"] ) );
+    }
+
+    error_log( "[CL Listing Collection] Unexpected listings response shape: root_keys=" . $root_keys . "; data_keys=" . $data_keys ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 }

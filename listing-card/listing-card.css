@@ -1,0 +1,37 @@
+.cl-listing-card {
+  display: block;
+  text-decoration: none;
+}
+
+.cl-listing-card > * + * {
+  margin-top: 0.5rem;
+}
+
+.cl-card-image {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.cl-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cl-card-image--placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #f2f2f2;
+}
+
+.cl-card-address {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cl-card-attributes {
+  display: flex;
+  gap: 0.5rem;
+}

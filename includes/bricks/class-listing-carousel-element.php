@@ -317,16 +317,24 @@ class Listing_Carousel_Element extends Element {
             return;
         }
 
-        $aspect_class = $this->resolve_aspect_ratio_class( $settings );
-        $clickable = ! empty( $settings["clickable"] );
-        $target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
-
+        $grid_listings = [];
         foreach ( $items as $item ) {
             if ( ! is_array( $item ) ) {
                 continue;
             }
-            $this->render_card( $item, $clickable, $target, $aspect_class );
+
+            $listing_id = $item["listing_id"] ?? "";
+            $link_url = "";
+            if ( ! \cllc_is_blank( $listing_id ) ) {
+                $link_url = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
+            }
+
+            $item["link_url"] = $link_url;
+            $grid_listings[] = $item;
         }
+        echo '<div class="cl-listing-carousel">';
+        echo render_listing_grid( $grid_listings );
+        echo '</div>';
 
         if ( $structured_data_mode === "itemlist" && ! $this->is_listing_detail_context() ) {
             $schema = $this->build_itemlist_schema( $items, $settings );
@@ -336,88 +344,6 @@ class Listing_Carousel_Element extends Element {
                 echo "</script>";
             }
         }
-    }
-
-    private function render_card( array $item, bool $clickable, string $target, string $aspect_class ): void {
-        $listing_id = $item["listing_id"] ?? "";
-        $link = "";
-        if ( ! \cllc_is_blank( $listing_id ) ) {
-            $link = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
-        }
-
-        $media_primary = "";
-        if ( isset( $item["media"] ) && is_array( $item["media"] ) ) {
-            $media_primary = isset( $item["media"]["primary"] ) ? trim( (string) $item["media"]["primary"] ) : "";
-        }
-
-        $address = "";
-        if ( isset( $item["address"] ) && is_array( $item["address"] ) ) {
-            $address = isset( $item["address"]["display"] ) ? trim( (string) $item["address"]["display"] ) : "";
-        }
-
-        $bedrooms = null;
-        $bathrooms = null;
-        $sqft = null;
-        if ( isset( $item["structure"] ) && is_array( $item["structure"] ) ) {
-            $bedrooms = $item["structure"]["bedrooms_total"] ?? null;
-            $bathrooms = $item["structure"]["bathrooms_total"] ?? null;
-            $sqft = $item["structure"]["building_area_total"] ?? null;
-        }
-
-        $price_value = null;
-        if ( isset( $item["market"] ) && is_array( $item["market"] ) ) {
-            $price_value = $item["market"]["list_price"] ?? null;
-            // TODO: reintroduce status badge using canonical market.status only
-        }
-
-        $price = \cllc_format_price( $price_value );
-        $is_clickable = $clickable && "" !== $link;
-
-        $card_classes = [ "cl-card" ];
-        if ( "" !== $aspect_class ) {
-            $card_classes[] = $aspect_class;
-        }
-        if ( $is_clickable ) {
-            $card_classes[] = "is-clickable";
-        }
-
-        $attributes = "class=\"" . esc_attr( implode( " ", $card_classes ) ) . "\"";
-        if ( $is_clickable ) {
-            $attributes .= " data-url=\"" . esc_url( $link ) . "\" data-target=\"" . esc_attr( $target ) . "\"";
-        }
-
-        // NOTE: This card structure is intended for future reuse across plugins (home search, collections, etc.)
-        echo "<div " . $attributes . ">";
-        if ( "" !== $media_primary ) {
-            echo "<div class=\"cl-card-media\"><img src=\"" . esc_url( $media_primary ) . "\" alt=\"" . esc_attr( $address ) . "\" loading=\"lazy\" /></div>";
-        }
-        echo "<div class=\"cl-card-body\">";
-        if ( "" !== $price ) {
-            echo "<div class=\"cl-card-price\">" . esc_html( $price ) . "</div>";
-        }
-        if ( "" !== $address ) {
-            echo "<div class=\"cl-card-address\">" . esc_html( $address ) . "</div>";
-        }
-
-        $meta_items = [];
-        if ( ! \cllc_is_blank( $bedrooms ) ) {
-            $meta_items[] = esc_html( (string) $bedrooms ) . " Beds";
-        }
-        if ( ! \cllc_is_blank( $bathrooms ) ) {
-            $meta_items[] = esc_html( (string) $bathrooms ) . " Baths";
-        }
-        if ( ! \cllc_is_blank( $sqft ) ) {
-            $meta_items[] = esc_html( (string) $sqft ) . " SqFt";
-        }
-        if ( ! empty( $meta_items ) ) {
-            echo "<div class=\"cl-card-meta\">";
-            foreach ( $meta_items as $meta_item ) {
-                echo "<span class=\"cl-meta-item\">" . $meta_item . "</span>";
-            }
-            echo "</div>";
-        }
-        echo "</div>";
-        echo "</div>";
     }
 
     private function render_empty_state(): void {
@@ -608,10 +534,12 @@ class Listing_Carousel_Element extends Element {
 
     private function enqueue_assets(): void {
         $style_url = plugins_url( "assets/css/listing-collection.css", CLLC_PLUGIN_FILE );
-        $script_url = plugins_url( "assets/js/listing-collection.js", CLLC_PLUGIN_FILE );
+        $grid_style_url = plugins_url( "listing-grid/listing-grid.css", CLLC_PLUGIN_FILE );
+        $card_style_url = plugins_url( "listing-card/listing-card.css", CLLC_PLUGIN_FILE );
 
         wp_enqueue_style( "cllc-listing-collection", $style_url, [], CLLC_VERSION );
-        wp_enqueue_script( "cllc-listing-collection", $script_url, [], CLLC_VERSION, true );
+        wp_enqueue_style( "cllc-listing-grid", $grid_style_url, [], CLLC_VERSION );
+        wp_enqueue_style( "cllc-listing-card", $card_style_url, [], CLLC_VERSION );
     }
 
     private function get_property_type_options(): array {

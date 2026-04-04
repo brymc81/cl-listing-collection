@@ -1,9 +1,10 @@
 # CL Listing Collection
 
-SSR listing card renderer for curated collection embeds.
+SSR listing presentation components for curated collection embeds.
 
-Carousel is one presentation mode within this plugin.
-It is not a separate plugin.
+`listing-card` is a shared UI component.
+`listing-grid` and carousel are presentation modes within this plugin.
+Carousel is not a separate plugin.
 
 ## What This Plugin Does
 - Registers `CL Listing Carousel` Bricks element.
@@ -30,6 +31,6 @@ It is not a separate plugin.
 - Canonical schema/contract authority: `../cl-reso-link/docs/*`
 
 ## Unique Behavior
-- SSR-first card output
-- JS click enhancement only
+- SSR-first grid/card output
+- CSS-only carousel presentation mode (no JS dependency)
 - No client-side normalization or filter reconstruction

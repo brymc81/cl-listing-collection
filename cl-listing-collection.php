@@ -27,6 +27,20 @@ function cllc_register_bricks_elements(): void {
         return;
     }
 
+    $listing_card_file = CLLC_PLUGIN_DIR . "listing-card/listing-card.php";
+    if ( ! file_exists( $listing_card_file ) ) {
+        cllc_log_bricks( "Listing card file missing: " . $listing_card_file );
+        return;
+    }
+    require_once $listing_card_file;
+
+    $listing_grid_file = CLLC_PLUGIN_DIR . "listing-grid/listing-grid.php";
+    if ( ! file_exists( $listing_grid_file ) ) {
+        cllc_log_bricks( "Listing grid file missing: " . $listing_grid_file );
+        return;
+    }
+    require_once $listing_grid_file;
+
     $element_file = CLLC_PLUGIN_DIR . "includes/bricks/class-listing-carousel-element.php";
     if ( ! file_exists( $element_file ) ) {
         cllc_log_bricks( "Element file missing: " . $element_file );
@@ -69,6 +83,8 @@ function cllc_maybe_clear_bricks_cache(): void {
 
     $element_files = [
         CLLC_PLUGIN_FILE,
+        CLLC_PLUGIN_DIR . "listing-card/listing-card.php",
+        CLLC_PLUGIN_DIR . "listing-grid/listing-grid.php",
         CLLC_PLUGIN_DIR . "includes/bricks/class-listing-carousel-element.php",
     ];
 

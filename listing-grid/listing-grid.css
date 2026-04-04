@@ -1,0 +1,26 @@
+.cl-listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.cl-listing-grid .cl-listing-card {
+  min-width: 0;
+}
+
+.cl-listing-carousel .cl-listing-grid {
+  display: flex;
+  overflow-x: auto;
+  gap: 1rem;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  align-items: stretch;
+}
+
+.cl-listing-carousel .cl-listing-grid .cl-listing-card {
+  flex: 0 0 clamp(240px, 72vw, 360px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}

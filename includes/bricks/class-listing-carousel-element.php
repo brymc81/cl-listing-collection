@@ -44,11 +44,11 @@ class Listing_Carousel_Element extends Element {
     }
 
     public function set_controls() {
-        $this->controls["community_key"] = [
+        $this->controls["community_key_input"] = [
+            "tab" => "content",
             "group" => "query",
             "label" => __( "Community Key", "cl-listing-collection" ),
             "type" => "text",
-            "required" => true,
             "hasDynamicData" => true,
         ];
 
@@ -89,6 +89,8 @@ class Listing_Carousel_Element extends Element {
             "label" => __( "Property Type", "cl-listing-collection" ),
             "type" => "select",
             "options" => $this->get_property_type_options(),
+            "multiple" => true,
+            "default" => [],
             "placeholder" => __( "Select property type", "cl-listing-collection" ),
         ];
 
@@ -99,6 +101,16 @@ class Listing_Carousel_Element extends Element {
             "options" => $this->get_property_subtype_options(),
             "multiple" => true,
             "placeholder" => __( "Select property subtypes", "cl-listing-collection" ),
+        ];
+
+        $this->controls["status"] = [
+            "group" => "query",
+            "label" => __( "Status", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => $this->get_status_options(),
+            "multiple" => true,
+            "default" => [ "Active" ],
+            "placeholder" => __( "Select statuses", "cl-listing-collection" ),
         ];
 
         $this->controls["price_min"] = [
@@ -226,10 +238,18 @@ class Listing_Carousel_Element extends Element {
         ];
     }
 
+    /**
+     * Resolve the community-scoped listing query, call the canonical search endpoint, and render SSR cards.
+     */
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
 
-        $community_key = $this->resolve_dynamic_text_setting( $settings["community_key"] ?? "" );
+        $community_key_raw = $settings["community_key_input"] ?? ( $settings["community_key"] ?? "" );
+        $community_key = $this->render_dynamic_data( $community_key_raw );
+        $community_key = is_scalar( $community_key ) ? trim( sanitize_text_field( (string) $community_key ) ) : "";
+        if ( $this->is_unresolved_dynamic_placeholder( $community_key ) ) {
+            $community_key = "";
+        }
         if ( "" === $community_key ) {
             $this->log_warning( "Missing required community_key; rendering empty state." );
             $this->enqueue_assets();
@@ -265,14 +285,19 @@ class Listing_Carousel_Element extends Element {
             "order" => $normalized_sort["order"],
         ];
 
-        $property_type = isset( $settings["property_type"] ) ? sanitize_text_field( (string) $settings["property_type"] ) : "";
-        if ( "" !== $property_type ) {
-            $params["property_type"] = $property_type;
+        $property_types = $this->normalize_multi_select_value( $settings["property_type"] ?? null );
+        if ( [] !== $property_types ) {
+            $params["property_type"] = implode( ",", $property_types );
         }
 
         $property_sub_types = $this->normalize_multi_select_value( $settings["property_subtype"] ?? null );
         if ( [] !== $property_sub_types ) {
             $params["property_subtype"] = implode( ",", $property_sub_types );
+        }
+
+        $statuses = $this->normalize_multi_select_value( $settings["status"] ?? null );
+        if ( [] !== $statuses ) {
+            $params["status"] = implode( ",", $statuses );
         }
 
         $price_min = \cllc_sanitize_float( $settings["price_min"] ?? null );
@@ -572,6 +597,22 @@ class Listing_Carousel_Element extends Element {
         return $options;
     }
 
+    private function get_status_options(): array {
+        $defaults = [
+            "Active" => __( "Active", "cl-listing-collection" ),
+            "Active Under Contract" => __( "Active Under Contract", "cl-listing-collection" ),
+            "Pending" => __( "Pending", "cl-listing-collection" ),
+            "Closed" => __( "Closed", "cl-listing-collection" ),
+        ];
+
+        $options = apply_filters( "cllc_status_options", $defaults );
+        if ( ! is_array( $options ) ) {
+            return $defaults;
+        }
+
+        return $options;
+    }
+
     /**
      * @param mixed $value
      * @return array<int, string>
@@ -632,31 +673,6 @@ class Listing_Carousel_Element extends Element {
             "sort" => $sort,
             "order" => $order,
         ];
-    }
-
-    private function resolve_dynamic_text_setting( $value ): string {
-        if ( ! is_scalar( $value ) ) {
-            return "";
-        }
-
-        $resolved = (string) $value;
-        $post_id = (int) get_the_ID();
-
-        if ( function_exists( "cl_resolve_dynamic_value" ) ) {
-            $resolved = cl_resolve_dynamic_value( $value, $post_id );
-        } elseif ( class_exists( "\\Bricks\\Helpers" ) && method_exists( "\\Bricks\\Helpers", "render_dynamic_data" ) ) {
-            $dynamic = \Bricks\Helpers::render_dynamic_data( $resolved, $post_id );
-            if ( is_scalar( $dynamic ) ) {
-                $resolved = (string) $dynamic;
-            }
-        }
-
-        $resolved = trim( sanitize_text_field( $resolved ) );
-        if ( "" === $resolved || $this->is_unresolved_dynamic_placeholder( $resolved ) ) {
-            return "";
-        }
-
-        return $resolved;
     }
 
     private function is_unresolved_dynamic_placeholder( string $value ): bool {

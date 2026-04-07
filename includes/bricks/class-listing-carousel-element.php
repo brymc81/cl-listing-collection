@@ -49,6 +49,7 @@ class Listing_Carousel_Element extends Element {
             "group" => "query",
             "label" => __( "Community Key", "cl-listing-collection" ),
             "type" => "text",
+            "placeholder" => "mount_pleasant",
             "hasDynamicData" => true,
         ];
 
@@ -244,14 +245,27 @@ class Listing_Carousel_Element extends Element {
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
 
-        $community_key_raw = $settings["community_key_input"] ?? ( $settings["community_key"] ?? "" );
-        $community_key = $this->render_dynamic_data( $community_key_raw );
-        $community_key = is_scalar( $community_key ) ? trim( sanitize_text_field( (string) $community_key ) ) : "";
+        $raw = $settings["community_key_input"] ?? "";
+        $community_key = $this->render_dynamic_data( $raw, get_the_ID() );
+        $community_key = is_scalar( $community_key ) ? trim( (string) $community_key ) : "";
         if ( $this->is_unresolved_dynamic_placeholder( $community_key ) ) {
             $community_key = "";
         }
+        if ( "" !== $community_key ) {
+            $community_key = trim( sanitize_text_field( $community_key ) );
+        }
         if ( "" === $community_key ) {
             $this->log_warning( "Missing required community_key; rendering empty state." );
+            $this->enqueue_assets();
+            $this->render_empty_state();
+            return;
+        }
+        $community_context = \cllc_resolve_community_context( $community_key );
+        $community_slug = is_array( $community_context ) && isset( $community_context["slug"] ) && is_string( $community_context["slug"] )
+            ? trim( sanitize_text_field( $community_context["slug"] ) )
+            : "";
+        if ( "" === $community_slug ) {
+            $this->log_warning( "Context slug resolution failed for community_key; rendering empty state." );
             $this->enqueue_assets();
             $this->render_empty_state();
             return;
@@ -278,26 +292,28 @@ class Listing_Carousel_Element extends Element {
         $order_value = isset( $settings["order"] ) ? sanitize_text_field( (string) $settings["order"] ) : "desc";
         $normalized_sort = $this->normalize_sort_value( $sort_value, $order_value );
 
-        $params = [
-            "community_key" => $community_key,
+        $filters = [
             "limit" => $limit,
             "sort" => $normalized_sort["sort"],
             "order" => $normalized_sort["order"],
         ];
+        if ( "" !== $community_slug ) {
+            $filters["community"] = $community_slug;
+        }
 
         $property_types = $this->normalize_multi_select_value( $settings["property_type"] ?? null );
         if ( [] !== $property_types ) {
-            $params["property_type"] = implode( ",", $property_types );
+            $filters["property_type"] = implode( ",", $property_types );
         }
 
         $property_sub_types = $this->normalize_multi_select_value( $settings["property_subtype"] ?? null );
         if ( [] !== $property_sub_types ) {
-            $params["property_subtype"] = implode( ",", $property_sub_types );
+            $filters["property_subtype"] = implode( ",", $property_sub_types );
         }
 
         $statuses = $this->normalize_multi_select_value( $settings["status"] ?? null );
         if ( [] !== $statuses ) {
-            $params["status"] = implode( ",", $statuses );
+            $filters["status"] = implode( ",", $statuses );
         }
 
         $price_min = \cllc_sanitize_float( $settings["price_min"] ?? null );
@@ -307,23 +323,23 @@ class Listing_Carousel_Element extends Element {
             $price_max = null;
         }
         if ( null !== $price_min ) {
-            $params["price_min"] = $price_min;
+            $filters["price_min"] = $price_min;
         }
         if ( null !== $price_max ) {
-            $params["price_max"] = $price_max;
+            $filters["price_max"] = $price_max;
         }
 
         $beds_min = \cllc_sanitize_int( $settings["beds_min"] ?? null );
         if ( null !== $beds_min && $beds_min > 0 ) {
-            $params["beds_min"] = $beds_min;
+            $filters["beds_min"] = $beds_min;
         }
 
         $baths_min = \cllc_sanitize_int( $settings["baths_min"] ?? null );
         if ( null !== $baths_min && $baths_min > 0 ) {
-            $params["baths_min"] = $baths_min;
+            $filters["baths_min"] = $baths_min;
         }
 
-        $response = \cllc_fetch_listings( $params );
+        $response = \cllc_fetch_listings( $filters );
         $items = isset( $response["items"] ) && is_array( $response["items"] ) ? $response["items"] : [];
 
         if ( ! empty( $response["error"] ) ) {
@@ -348,6 +364,18 @@ class Listing_Carousel_Element extends Element {
                 continue;
             }
 
+            $media = isset( $item["media"] ) && is_array( $item["media"] ) ? $item["media"] : [];
+            $primary_photo = "";
+            if ( isset( $media["primary_photo"] ) && is_string( $media["primary_photo"] ) ) {
+                $primary_photo = trim( $media["primary_photo"] );
+            } elseif ( isset( $media["primary"] ) && is_string( $media["primary"] ) ) {
+                $primary_photo = trim( $media["primary"] );
+            }
+            if ( $primary_photo === "" ) {
+                continue;
+            }
+            $item["media"]["primary_photo"] = $primary_photo;
+
             $listing_id = $item["listing_id"] ?? "";
             $link_url = "";
             if ( ! \cllc_is_blank( $listing_id ) ) {
@@ -356,6 +384,10 @@ class Listing_Carousel_Element extends Element {
 
             $item["link_url"] = $link_url;
             $grid_listings[] = $item;
+        }
+        if ( empty( $grid_listings ) ) {
+            $this->render_empty_state();
+            return;
         }
         echo '<div class="cl-listing-carousel">';
         echo render_listing_grid( $grid_listings );

@@ -167,22 +167,37 @@ class Listing_Carousel_Element extends Element {
         $this->controls["show_location"] = [
             "group" => "display",
             "label" => __( "Show Location", "cl-listing-collection" ),
-            "type" => "checkbox",
-            "default" => true,
+            "type" => "select",
+            "inline" => true,
+            "options" => [
+                "true" => __( "On", "cl-listing-collection" ),
+                "false" => __( "Off", "cl-listing-collection" ),
+            ],
+            "default" => "true",
         ];
 
         $this->controls["show_facts"] = [
             "group" => "display",
             "label" => __( "Show Facts", "cl-listing-collection" ),
-            "type" => "checkbox",
-            "default" => true,
+            "type" => "select",
+            "inline" => true,
+            "options" => [
+                "true" => __( "On", "cl-listing-collection" ),
+                "false" => __( "Off", "cl-listing-collection" ),
+            ],
+            "default" => "true",
         ];
 
         $this->controls["show_status"] = [
             "group" => "display",
             "label" => __( "Show Status", "cl-listing-collection" ),
-            "type" => "checkbox",
-            "default" => true,
+            "type" => "select",
+            "inline" => true,
+            "options" => [
+                "true" => __( "On", "cl-listing-collection" ),
+                "false" => __( "Off", "cl-listing-collection" ),
+            ],
+            "default" => "true",
         ];
 
         $this->controls["compliance_display"] = [
@@ -414,7 +429,9 @@ class Listing_Carousel_Element extends Element {
         }
 
         $aspect_ratio_class = $this->resolve_aspect_ratio_class( $settings );
-        $link_target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
+        $is_clickable = $this->resolve_bricks_boolean_setting( $settings, "clickable", true );
+        $open_in_new_tab = $this->resolve_bricks_boolean_setting( $settings, "open_in_new_tab", false );
+        $link_target = ( $is_clickable && $open_in_new_tab ) ? "_blank" : "_self";
         $display_preferences = $this->resolve_display_preferences( $settings );
         $card_view_models = [];
         foreach ( $items as $item ) {
@@ -422,7 +439,7 @@ class Listing_Carousel_Element extends Element {
                 continue;
             }
 
-            $card_view_model = $this->build_card_view_model( $item, $aspect_ratio_class, $link_target, $display_preferences );
+            $card_view_model = $this->build_card_view_model( $item, $aspect_ratio_class, $link_target, $display_preferences, $is_clickable );
             if ( is_array( $card_view_model ) ) {
                 $card_view_models[] = $card_view_model;
             }
@@ -482,16 +499,13 @@ class Listing_Carousel_Element extends Element {
         }
 
         $image_ratio = isset( $settings["image_aspect_ratio"] ) ? sanitize_text_field( (string) $settings["image_aspect_ratio"] ) : "4:3";
-        $image_ratio = trim( $image_ratio );
-        if ( ! in_array( $image_ratio, [ "1:1", "4:3", "16:9" ], true ) ) {
-            $image_ratio = "4:3";
-        }
+        $image_ratio_css = $this->normalize_image_aspect_ratio_css_value( $image_ratio );
 
         $vars = sprintf(
             "--cllc-card-width:%s;--cllc-gap:%s;--cllc-image-ratio:%s;",
             $card_width,
             $gap,
-            $image_ratio
+            $image_ratio_css
         );
 
         return ' style="' . esc_attr( $vars ) . '"';
@@ -521,7 +535,18 @@ class Listing_Carousel_Element extends Element {
         return preg_replace( '/\s+/', ' ', $raw ) ?? "";
     }
 
-    private function build_card_view_model( array $item, string $aspect_ratio_class, string $link_target, array $display_preferences ): ?array {
+    private function normalize_image_aspect_ratio_css_value( string $value ): string {
+        $normalized = trim( strtolower( $value ) );
+        $map = [
+            "1:1" => "1 / 1",
+            "4:3" => "4 / 3",
+            "16:9" => "16 / 9",
+        ];
+
+        return $map[ $normalized ] ?? "4 / 3";
+    }
+
+    private function build_card_view_model( array $item, string $aspect_ratio_class, string $link_target, array $display_preferences, bool $is_clickable ): ?array {
         $detail_url = $this->resolve_card_detail_url( $item );
         if ( $detail_url === "" ) {
             return null;
@@ -576,7 +601,7 @@ class Listing_Carousel_Element extends Element {
         $compliance_view_model = $this->map_compact_compliance_for_card_view_model( $compliance );
 
         return [
-            "card_class" => trim( "cl-card " . $aspect_ratio_class . " is-clickable" ),
+            "card_class" => trim( "cl-card " . $aspect_ratio_class . ( $is_clickable ? " is-clickable" : "" ) ),
             "detail_url" => $detail_url,
             "photo_url" => $photo_url,
             "image_alt" => $address_display,
@@ -586,9 +611,9 @@ class Listing_Carousel_Element extends Element {
             "facts" => implode( " | ", $facts ),
             "status" => $status,
             "link_target" => $link_target,
-            "show_location" => ! empty( $display_preferences["show_location"] ),
-            "show_facts" => ! empty( $display_preferences["show_facts"] ),
-            "show_status" => ! empty( $display_preferences["show_status"] ),
+            "show_location" => $display_preferences["show_location"] ?? true,
+            "show_facts" => $display_preferences["show_facts"] ?? true,
+            "show_status" => $display_preferences["show_status"] ?? true,
             "compliance_display" => isset( $display_preferences["compliance_display"] ) ? (string) $display_preferences["compliance_display"] : "compact",
             // Preserve canonical compact compliance payload in the card view model.
             "compliance_compact" => $compliance,
@@ -623,36 +648,51 @@ class Listing_Carousel_Element extends Element {
         }
 
         return [
-            "show_location" => $this->resolve_checkbox_setting_with_default( $settings, "show_location", true ),
-            "show_facts" => $this->resolve_checkbox_setting_with_default( $settings, "show_facts", true ),
-            "show_status" => $this->resolve_checkbox_setting_with_default( $settings, "show_status", true ),
+            "show_location" => $this->resolve_bricks_boolean_setting( $settings, "show_location", true ),
+            "show_facts" => $this->resolve_bricks_boolean_setting( $settings, "show_facts", true ),
+            "show_status" => $this->resolve_bricks_boolean_setting( $settings, "show_status", true ),
             "compliance_display" => $compliance_display,
         ];
     }
 
-    private function resolve_checkbox_setting_with_default( array $settings, string $key, bool $default ): bool {
+    private function resolve_bricks_boolean_setting( array $settings, string $key, bool $default ): bool {
         if ( ! array_key_exists( $key, $settings ) ) {
             return $default;
         }
 
-        $value = $settings[ $key ];
+        return $this->normalize_bricks_boolean_value( $settings[ $key ] );
+    }
+
+    /**
+     * Strict boolean normalization for Bricks control values.
+     */
+    private function normalize_bricks_boolean_value( $value ): bool {
+        if ( null === $value ) {
+            return false;
+        }
+
         if ( is_bool( $value ) ) {
             return $value;
         }
+
         if ( is_numeric( $value ) ) {
-            return (int) $value === 1;
+            $numeric = (string) (int) $value;
+            return $numeric === "1";
         }
+
         if ( is_string( $value ) ) {
             $normalized = strtolower( trim( $value ) );
-            if ( in_array( $normalized, [ "1", "true", "yes", "on" ], true ) ) {
+            if ( in_array( $normalized, [ "true", "1", "on", "yes" ], true ) ) {
                 return true;
             }
-            if ( in_array( $normalized, [ "0", "false", "no", "off", "" ], true ) ) {
+
+            if ( in_array( $normalized, [ "false", "0", "off", "no", "" ], true ) ) {
                 return false;
             }
         }
 
-        return $default;
+        // Strict mode: null and unknown values resolve to false.
+        return false;
     }
 
     private function resolve_card_detail_url( array $item ): string {
@@ -879,11 +919,16 @@ class Listing_Carousel_Element extends Element {
     }
 
     private function enqueue_assets(): void {
+        $style_file = CLLC_PLUGIN_DIR . "assets/css/listing-collection.css";
+        $grid_style_file = CLLC_PLUGIN_DIR . "listing-grid/listing-grid.css";
+
         $style_url = plugins_url( "assets/css/listing-collection.css", CLLC_PLUGIN_FILE );
         $grid_style_url = plugins_url( "listing-grid/listing-grid.css", CLLC_PLUGIN_FILE );
+        $style_version = file_exists( $style_file ) ? (string) filemtime( $style_file ) : CLLC_VERSION;
+        $grid_style_version = file_exists( $grid_style_file ) ? (string) filemtime( $grid_style_file ) : CLLC_VERSION;
 
-        wp_enqueue_style( "cllc-listing-collection", $style_url, [], CLLC_VERSION );
-        wp_enqueue_style( "cllc-listing-grid", $grid_style_url, [], CLLC_VERSION );
+        wp_enqueue_style( "cllc-listing-collection", $style_url, [], $style_version );
+        wp_enqueue_style( "cllc-listing-grid", $grid_style_url, [], $grid_style_version );
 
         if ( wp_style_is( "cl-property-components", "registered" ) ) {
             wp_enqueue_style( "cl-property-components" );

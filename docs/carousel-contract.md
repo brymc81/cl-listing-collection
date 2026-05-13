@@ -14,6 +14,7 @@ The carousel:
 - requests canonical listing data from `cl-reso-link`
 - renders SSR-first listing cards
 - optionally enhances the rendered markup with JavaScript
+- owns collection-level wrapper/layout behavior (for example instance-scoped width/gap/ratio variables and grid/scroll layout)
 
 The carousel does not:
 
@@ -24,6 +25,7 @@ The carousel does not:
 - define compensation display
 - author local compliance text
 - reshape canonical payloads into a private schema
+- own reusable card-internal CSS for `.clpc-*` elements
 
 ## Required Inputs
 
@@ -85,6 +87,15 @@ Display control behavior:
 - `compliance_display` defaults to `compact`.
 - Display controls are presentation-only and must not alter query/filter behavior.
 
+Compact recommended config (presentation only):
+
+- `card_width`: `clamp(150px, 24vw, 190px)`
+- `image_aspect_ratio`: `16:9`
+- `show_location`: `false`
+- `show_facts`: `false`
+- `show_status`: `false`
+- `compliance_display`: `compact`
+
 Future additions must be added only after this document and the canonical engine docs are updated together.
 
 ## Response Contract
@@ -108,6 +119,8 @@ Consumer expectations:
 Active shared card renderer:
 
 - active carousel card rendering uses `cl-property-components` (`clpc_render_property_card`) and emits `.clpc-*` card markup
+- `cl-property-components` is the owner of card-internal presentation for `.clpc-card`, `.clpc-card-link`, `.clpc-card-photo`, `.clpc-card-body`, `.clpc-card-price`, `.clpc-card-address`, `.clpc-card-meta`, `.clpc-card-status`, `.clpc-card-compliance`, `.clpc-card-compliance-text`, and `.clpc-card-idx-icon`
+- `cl-listing-collection` owns collection wrappers/layout context (for example `.cl-listing-carousel` and `.cl-listing-grid`) and per-instance layout variables
 - legacy internal `listing-card/*` artifacts in this plugin are not part of the active carousel render path
 
 ## SSR Baseline

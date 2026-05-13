@@ -38,6 +38,12 @@ class Listing_Carousel_Element extends Element {
         $this->control_groups["advanced"] = [
             "title" => __( "Advanced", "cl-listing-collection" ),
         ];
+        $this->control_groups["display"] = [
+            "title" => __( "Display", "cl-listing-collection" ),
+        ];
+        $this->control_groups["layout"] = [
+            "title" => __( "Layout", "cl-listing-collection" ),
+        ];
         $this->control_groups["style"] = [
             "title" => __( "Style", "cl-listing-collection" ),
         ];
@@ -156,6 +162,54 @@ class Listing_Carousel_Element extends Element {
                 "itemlist" => __( "ItemList", "cl-listing-collection" ),
             ],
             "default" => "itemlist",
+        ];
+
+        $this->controls["show_location"] = [
+            "group" => "display",
+            "label" => __( "Show Location", "cl-listing-collection" ),
+            "type" => "checkbox",
+            "default" => true,
+        ];
+
+        $this->controls["show_facts"] = [
+            "group" => "display",
+            "label" => __( "Show Facts", "cl-listing-collection" ),
+            "type" => "checkbox",
+            "default" => true,
+        ];
+
+        $this->controls["show_status"] = [
+            "group" => "display",
+            "label" => __( "Show Status", "cl-listing-collection" ),
+            "type" => "checkbox",
+            "default" => true,
+        ];
+
+        $this->controls["compliance_display"] = [
+            "group" => "display",
+            "label" => __( "Compliance Display", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "compact" => __( "Compact", "cl-listing-collection" ),
+                "full" => __( "Full", "cl-listing-collection" ),
+            ],
+            "default" => "compact",
+        ];
+
+        $this->controls["card_width"] = [
+            "group" => "layout",
+            "label" => __( "Card Width", "cl-listing-collection" ),
+            "type" => "text",
+            "default" => "clamp(240px, 72vw, 360px)",
+            "placeholder" => "clamp(240px, 72vw, 360px)",
+        ];
+
+        $this->controls["gap"] = [
+            "group" => "layout",
+            "label" => __( "Gap", "cl-listing-collection" ),
+            "type" => "text",
+            "default" => "1rem",
+            "placeholder" => "1rem",
         ];
 
         $this->controls["card_background"] = [
@@ -361,13 +415,14 @@ class Listing_Carousel_Element extends Element {
 
         $aspect_ratio_class = $this->resolve_aspect_ratio_class( $settings );
         $link_target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
+        $display_preferences = $this->resolve_display_preferences( $settings );
         $card_view_models = [];
         foreach ( $items as $item ) {
             if ( ! is_array( $item ) ) {
                 continue;
             }
 
-            $card_view_model = $this->build_card_view_model( $item, $aspect_ratio_class, $link_target );
+            $card_view_model = $this->build_card_view_model( $item, $aspect_ratio_class, $link_target, $display_preferences );
             if ( is_array( $card_view_model ) ) {
                 $card_view_models[] = $card_view_model;
             }
@@ -378,7 +433,8 @@ class Listing_Carousel_Element extends Element {
             return;
         }
 
-        echo '<div class="cl-listing-carousel"><div class="cl-listing-grid">';
+        $wrapper_style = $this->build_wrapper_css_vars( $settings );
+        echo '<div class="cl-listing-carousel"' . $wrapper_style . '><div class="cl-listing-grid">';
         foreach ( $card_view_models as $card_view_model ) {
             echo clpc_render_property_card( $card_view_model );
         }
@@ -414,7 +470,58 @@ class Listing_Carousel_Element extends Element {
         return $map[ $value ] ?? $map["4:3"];
     }
 
-    private function build_card_view_model( array $item, string $aspect_ratio_class, string $link_target ): ?array {
+    private function build_wrapper_css_vars( array $settings ): string {
+        $card_width = $this->sanitize_css_value( $settings["card_width"] ?? "clamp(240px, 72vw, 360px)" );
+        if ( $card_width === "" ) {
+            $card_width = "clamp(240px, 72vw, 360px)";
+        }
+
+        $gap = $this->sanitize_css_value( $settings["gap"] ?? "1rem" );
+        if ( $gap === "" ) {
+            $gap = "1rem";
+        }
+
+        $image_ratio = isset( $settings["image_aspect_ratio"] ) ? sanitize_text_field( (string) $settings["image_aspect_ratio"] ) : "4:3";
+        $image_ratio = trim( $image_ratio );
+        if ( ! in_array( $image_ratio, [ "1:1", "4:3", "16:9" ], true ) ) {
+            $image_ratio = "4:3";
+        }
+
+        $vars = sprintf(
+            "--cllc-card-width:%s;--cllc-gap:%s;--cllc-image-ratio:%s;",
+            $card_width,
+            $gap,
+            $image_ratio
+        );
+
+        return ' style="' . esc_attr( $vars ) . '"';
+    }
+
+    /**
+     * Sanitize user-provided CSS values for CSS custom properties.
+     */
+    private function sanitize_css_value( $value ): string {
+        if ( ! is_scalar( $value ) ) {
+            return "";
+        }
+
+        $raw = trim( sanitize_text_field( (string) $value ) );
+        if ( $raw === "" ) {
+            return "";
+        }
+
+        if ( strlen( $raw ) > 120 ) {
+            return "";
+        }
+
+        if ( 1 !== preg_match( '/^[a-zA-Z0-9\-\+\*\/\.\,\(\)%\s]+$/', $raw ) ) {
+            return "";
+        }
+
+        return preg_replace( '/\s+/', ' ', $raw ) ?? "";
+    }
+
+    private function build_card_view_model( array $item, string $aspect_ratio_class, string $link_target, array $display_preferences ): ?array {
         $detail_url = $this->resolve_card_detail_url( $item );
         if ( $detail_url === "" ) {
             return null;
@@ -479,11 +586,16 @@ class Listing_Carousel_Element extends Element {
             "facts" => implode( " | ", $facts ),
             "status" => $status,
             "link_target" => $link_target,
+            "show_location" => ! empty( $display_preferences["show_location"] ),
+            "show_facts" => ! empty( $display_preferences["show_facts"] ),
+            "show_status" => ! empty( $display_preferences["show_status"] ),
+            "compliance_display" => isset( $display_preferences["compliance_display"] ) ? (string) $display_preferences["compliance_display"] : "compact",
             // Preserve canonical compact compliance payload in the card view model.
             "compliance_compact" => $compliance,
             "compliance_source_mls_name" => $compliance_view_model["compliance_source_mls_name"],
             "compliance_listing_firm_name" => $compliance_view_model["compliance_listing_firm_name"],
             "compliance_listing_firm_mls_id" => $compliance_view_model["compliance_listing_firm_mls_id"],
+            "compliance_selling_firm_name" => $compliance_view_model["compliance_selling_firm_name"],
             "compliance_idx_icon_url" => $compliance_view_model["compliance_idx_icon_url"],
             "compliance_idx_icon_alt" => $compliance_view_model["compliance_idx_icon_alt"],
             "compliance_copyright_text" => $compliance_view_model["compliance_copyright_text"],
@@ -496,11 +608,51 @@ class Listing_Carousel_Element extends Element {
             "compliance_source_mls_name" => isset( $compliance["source_mls_name"] ) && is_scalar( $compliance["source_mls_name"] ) ? trim( (string) $compliance["source_mls_name"] ) : "",
             "compliance_listing_firm_name" => isset( $compliance["listing_firm_name"] ) && is_scalar( $compliance["listing_firm_name"] ) ? trim( (string) $compliance["listing_firm_name"] ) : "",
             "compliance_listing_firm_mls_id" => isset( $compliance["listing_firm_mls_id"] ) && is_scalar( $compliance["listing_firm_mls_id"] ) ? trim( (string) $compliance["listing_firm_mls_id"] ) : "",
+            "compliance_selling_firm_name" => isset( $compliance["selling_firm_name"] ) && is_scalar( $compliance["selling_firm_name"] ) ? trim( (string) $compliance["selling_firm_name"] ) : "",
             "compliance_idx_icon_url" => isset( $compliance["idx_icon_url"] ) && is_scalar( $compliance["idx_icon_url"] ) ? trim( (string) $compliance["idx_icon_url"] ) : "",
             "compliance_idx_icon_alt" => isset( $compliance["idx_icon_alt"] ) && is_scalar( $compliance["idx_icon_alt"] ) ? trim( (string) $compliance["idx_icon_alt"] ) : "",
             "compliance_copyright_text" => isset( $compliance["copyright_text"] ) && is_scalar( $compliance["copyright_text"] ) ? trim( (string) $compliance["copyright_text"] ) : "",
             "compliance_is_other_participant_listing" => ! empty( $compliance["is_other_participant_listing"] ),
         ];
+    }
+
+    private function resolve_display_preferences( array $settings ): array {
+        $compliance_display = isset( $settings["compliance_display"] ) ? sanitize_text_field( (string) $settings["compliance_display"] ) : "compact";
+        if ( ! in_array( $compliance_display, [ "compact", "full" ], true ) ) {
+            $compliance_display = "compact";
+        }
+
+        return [
+            "show_location" => $this->resolve_checkbox_setting_with_default( $settings, "show_location", true ),
+            "show_facts" => $this->resolve_checkbox_setting_with_default( $settings, "show_facts", true ),
+            "show_status" => $this->resolve_checkbox_setting_with_default( $settings, "show_status", true ),
+            "compliance_display" => $compliance_display,
+        ];
+    }
+
+    private function resolve_checkbox_setting_with_default( array $settings, string $key, bool $default ): bool {
+        if ( ! array_key_exists( $key, $settings ) ) {
+            return $default;
+        }
+
+        $value = $settings[ $key ];
+        if ( is_bool( $value ) ) {
+            return $value;
+        }
+        if ( is_numeric( $value ) ) {
+            return (int) $value === 1;
+        }
+        if ( is_string( $value ) ) {
+            $normalized = strtolower( trim( $value ) );
+            if ( in_array( $normalized, [ "1", "true", "yes", "on" ], true ) ) {
+                return true;
+            }
+            if ( in_array( $normalized, [ "0", "false", "no", "off", "" ], true ) ) {
+                return false;
+            }
+        }
+
+        return $default;
     }
 
     private function resolve_card_detail_url( array $item ): string {

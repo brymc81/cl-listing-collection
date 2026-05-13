@@ -62,6 +62,28 @@ Presentation-only controls that do not change canonical search semantics:
 - `clickable`
 - `open_in_new_tab`
 - `image_aspect_ratio`
+- `card_width`
+- `gap`
+- `show_location`
+- `show_facts`
+- `show_status`
+- `compliance_display`
+
+Layout control behavior:
+
+- `card_width` defaults to `clamp(240px, 72vw, 360px)` and maps to `--cllc-card-width` on the carousel instance wrapper.
+- `gap` defaults to `1rem` and maps to `--cllc-gap` on the carousel instance wrapper.
+- `image_aspect_ratio` continues to control the card ratio class and may also be exposed on the wrapper as `--cllc-image-ratio`.
+- CSS must consume these values with safe fallbacks so existing elements without explicit layout settings preserve current appearance.
+- Variables are scoped per instance wrapper so multiple carousel instances can use different sizing on the same page.
+
+Display control behavior:
+
+- `show_location` defaults to `true` and controls location-row visibility in card rendering.
+- `show_facts` defaults to `true` and controls facts-row visibility in card rendering.
+- `show_status` defaults to `true` and controls status-row visibility in card rendering.
+- `compliance_display` defaults to `compact`.
+- Display controls are presentation-only and must not alter query/filter behavior.
 
 Future additions must be added only after this document and the canonical engine docs are updated together.
 
@@ -137,6 +159,20 @@ Required rules:
 - never alter, remove, or conceal text, photos, copyright notices, or copyright management information except as allowed for formatting or MLS/RESO compliance
 - do not leak contact info or compensation-related text from remarks or other broader payloads
 - if a required compliance field is missing from the canonical payload, fail safe by omitting the restricted element or the listing rather than inventing substitute language
+
+Compact compliance rendering rules:
+
+- compact mode may render IDX/MLS icon metadata when `idx_icon_url` is present in canonical compact compliance
+- compact mode may render `Listed by {listing brokerage name}` only when canonical `listing_firm_name` is present
+- compact mode may render `Sold by {selling brokerage name}` only for sold/closed listing statuses and only when canonical compact compliance includes a non-empty selling brokerage name
+- compact mode must not render full copyright text
+- compact mode must not invent brokerage names or fallback copy from non-canonical sources
+- compact mode must never expose compensation text or contact/remarks leakage
+
+Upstream contract TODO:
+
+- canonical compact compliance in `cl-reso-link/docs/idx-compliance-contract.md` does not currently include selling brokerage name fields.
+- until `cl-reso-link` adds canonical compact selling brokerage attribution, consumers must omit `Sold by ...` in compact mode and must not infer or fabricate it.
 
 If the requested display surface cannot be justified by the canonical compliance payload, the carousel must not attempt a best-effort interpretation.
 

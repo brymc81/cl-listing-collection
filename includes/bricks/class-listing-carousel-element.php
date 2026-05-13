@@ -44,10 +44,19 @@ class Listing_Carousel_Element extends Element {
     }
 
     public function set_controls() {
+        $this->controls["geo_shape_id_input"] = [
+            "tab" => "content",
+            "group" => "query",
+            "label" => __( "Geo Shape ID", "cl-listing-collection" ),
+            "type" => "text",
+            "placeholder" => "downtown_charleston__ansonborough",
+            "hasDynamicData" => true,
+        ];
+
         $this->controls["community_key_input"] = [
             "tab" => "content",
             "group" => "query",
-            "label" => __( "Community Key", "cl-listing-collection" ),
+            "label" => __( "Community Key (Legacy Fallback)", "cl-listing-collection" ),
             "type" => "text",
             "placeholder" => "mount_pleasant",
             "hasDynamicData" => true,
@@ -156,7 +165,7 @@ class Listing_Carousel_Element extends Element {
             "css" => [
                 [
                     "property" => "background",
-                    "selector" => ".cl-card",
+                    "selector" => ".clpc-card",
                 ],
             ],
         ];
@@ -169,7 +178,7 @@ class Listing_Carousel_Element extends Element {
             "css" => [
                 [
                     "property" => "border-radius",
-                    "selector" => ".cl-card",
+                    "selector" => ".clpc-card",
                 ],
             ],
             "placeholder" => "10px",
@@ -182,7 +191,7 @@ class Listing_Carousel_Element extends Element {
             "css" => [
                 [
                     "property" => "font",
-                    "selector" => ".cl-card-price",
+                    "selector" => ".clpc-card-price",
                 ],
             ],
         ];
@@ -194,7 +203,7 @@ class Listing_Carousel_Element extends Element {
             "css" => [
                 [
                     "property" => "font",
-                    "selector" => ".cl-card-address",
+                    "selector" => ".clpc-card-address",
                 ],
             ],
         ];
@@ -206,7 +215,7 @@ class Listing_Carousel_Element extends Element {
             "css" => [
                 [
                     "property" => "font",
-                    "selector" => ".cl-card-meta",
+                    "selector" => ".clpc-card-meta",
                 ],
             ],
         ];
@@ -240,32 +249,15 @@ class Listing_Carousel_Element extends Element {
     }
 
     /**
-     * Resolve the community-scoped listing query, call the canonical search endpoint, and render SSR cards.
+     * Resolve geography-scoped listing query, call canonical search endpoint, and render SSR cards.
      */
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
 
-        $raw = $settings["community_key_input"] ?? "";
-        $community_key = $this->render_dynamic_data( $raw, get_the_ID() );
-        $community_key = is_scalar( $community_key ) ? trim( (string) $community_key ) : "";
-        if ( $this->is_unresolved_dynamic_placeholder( $community_key ) ) {
-            $community_key = "";
-        }
-        if ( "" !== $community_key ) {
-            $community_key = trim( sanitize_text_field( $community_key ) );
-        }
-        if ( "" === $community_key ) {
-            $this->log_warning( "Missing required community_key; rendering empty state." );
-            $this->enqueue_assets();
-            $this->render_empty_state();
-            return;
-        }
-        $community_context = \cllc_resolve_community_context( $community_key );
-        $community_slug = is_array( $community_context ) && isset( $community_context["slug"] ) && is_string( $community_context["slug"] )
-            ? trim( sanitize_text_field( $community_context["slug"] ) )
-            : "";
-        if ( "" === $community_slug ) {
-            $this->log_warning( "Context slug resolution failed for community_key; rendering empty state." );
+        $geo_shape_id = $this->resolve_geo_shape_id_input( $settings );
+        $legacy_community = $this->resolve_legacy_community_input( $settings );
+        if ( "" === $geo_shape_id && "" === $legacy_community ) {
+            $this->log_warning( "Missing required geographic input; rendering empty state." );
             $this->enqueue_assets();
             $this->render_empty_state();
             return;
@@ -297,8 +289,11 @@ class Listing_Carousel_Element extends Element {
             "sort" => $normalized_sort["sort"],
             "order" => $normalized_sort["order"],
         ];
-        if ( "" !== $community_slug ) {
-            $filters["community"] = $community_slug;
+        if ( "" !== $geo_shape_id ) {
+            $filters["geo_shape_id"] = $geo_shape_id;
+        } elseif ( "" !== $legacy_community ) {
+            // Backward compatibility only: legacy community inputs map to canonical community filter.
+            $filters["community"] = $legacy_community;
         }
 
         $property_types = $this->normalize_multi_select_value( $settings["property_type"] ?? null );
@@ -358,49 +353,50 @@ class Listing_Carousel_Element extends Element {
             return;
         }
 
-        $grid_listings = [];
+        if ( ! $this->can_render_with_shared_card_component() ) {
+            $this->log_warning( "cl-property-components card renderer unavailable; rendering empty state." );
+            $this->render_empty_state();
+            return;
+        }
+
+        $aspect_ratio_class = $this->resolve_aspect_ratio_class( $settings );
+        $link_target = ! empty( $settings["open_in_new_tab"] ) ? "_blank" : "_self";
+        $card_view_models = [];
         foreach ( $items as $item ) {
             if ( ! is_array( $item ) ) {
                 continue;
             }
 
-            $media = isset( $item["media"] ) && is_array( $item["media"] ) ? $item["media"] : [];
-            $primary_photo = "";
-            if ( isset( $media["primary_photo"] ) && is_string( $media["primary_photo"] ) ) {
-                $primary_photo = trim( $media["primary_photo"] );
-            } elseif ( isset( $media["primary"] ) && is_string( $media["primary"] ) ) {
-                $primary_photo = trim( $media["primary"] );
+            $card_view_model = $this->build_card_view_model( $item, $aspect_ratio_class, $link_target );
+            if ( is_array( $card_view_model ) ) {
+                $card_view_models[] = $card_view_model;
             }
-            if ( $primary_photo === "" ) {
-                continue;
-            }
-            $item["media"]["primary_photo"] = $primary_photo;
-
-            $listing_id = $item["listing_id"] ?? "";
-            $link_url = "";
-            if ( ! \cllc_is_blank( $listing_id ) ) {
-                $link_url = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
-            }
-
-            $item["link_url"] = $link_url;
-            $grid_listings[] = $item;
         }
-        if ( empty( $grid_listings ) ) {
+
+        if ( empty( $card_view_models ) ) {
             $this->render_empty_state();
             return;
         }
-        echo '<div class="cl-listing-carousel">';
-        echo render_listing_grid( $grid_listings );
-        echo '</div>';
+
+        echo '<div class="cl-listing-carousel"><div class="cl-listing-grid">';
+        foreach ( $card_view_models as $card_view_model ) {
+            echo clpc_render_property_card( $card_view_model );
+        }
+        echo "</div></div>";
 
         if ( $structured_data_mode === "itemlist" && ! $this->is_listing_detail_context() ) {
-            $schema = $this->build_itemlist_schema( $items, $settings );
+            $schema = $this->build_itemlist_schema( $card_view_models, $settings );
             if ( is_array( $schema ) ) {
                 echo "<script type=\"application/ld+json\">";
                 echo wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
                 echo "</script>";
             }
         }
+    }
+
+    private function can_render_with_shared_card_component(): bool {
+        return function_exists( "clpc_render_property_card" )
+            && function_exists( "clpc_normalize_card_view_model" );
     }
 
     private function render_empty_state(): void {
@@ -416,6 +412,153 @@ class Listing_Carousel_Element extends Element {
         ];
 
         return $map[ $value ] ?? $map["4:3"];
+    }
+
+    private function build_card_view_model( array $item, string $aspect_ratio_class, string $link_target ): ?array {
+        $detail_url = $this->resolve_card_detail_url( $item );
+        if ( $detail_url === "" ) {
+            return null;
+        }
+
+        $address = isset( $item["address"] ) && is_array( $item["address"] ) ? $item["address"] : [];
+        $market = isset( $item["market"] ) && is_array( $item["market"] ) ? $item["market"] : [];
+        $structure = isset( $item["structure"] ) && is_array( $item["structure"] ) ? $item["structure"] : [];
+        $compliance = isset( $item["compliance"] ) && is_array( $item["compliance"] ) ? $item["compliance"] : [];
+
+        $address_display = isset( $address["display"] ) && is_scalar( $address["display"] )
+            ? trim( (string) $address["display"] )
+            : "";
+        $city = isset( $address["city"] ) && is_scalar( $address["city"] ) ? trim( (string) $address["city"] ) : "";
+        $state = isset( $address["state"] ) && is_scalar( $address["state"] ) ? trim( (string) $address["state"] ) : "";
+        $postal = isset( $address["postal_code"] ) && is_scalar( $address["postal_code"] ) ? trim( (string) $address["postal_code"] ) : "";
+        if ( $city === "" && isset( $item["city"] ) && is_scalar( $item["city"] ) ) {
+            $city = trim( (string) $item["city"] );
+        }
+        if ( $state === "" && isset( $item["state"] ) && is_scalar( $item["state"] ) ) {
+            $state = trim( (string) $item["state"] );
+        }
+        if ( $postal === "" && isset( $item["postal_code"] ) && is_scalar( $item["postal_code"] ) ) {
+            $postal = trim( (string) $item["postal_code"] );
+        }
+        $location_parts = array_values(
+            array_filter(
+                [ $city, $state, $postal ],
+                static fn( string $part ): bool => $part !== ""
+            )
+        );
+        $location = implode( ", ", $location_parts );
+
+        $facts = [];
+        $bedrooms_total = $this->format_numeric_value( $structure["bedrooms_total"] ?? null );
+        if ( $bedrooms_total !== "" ) {
+            $facts[] = $bedrooms_total . " bd";
+        }
+
+        $bathrooms_total = $this->format_numeric_value( $structure["bathrooms_total"] ?? null );
+        if ( $bathrooms_total !== "" ) {
+            $facts[] = $bathrooms_total . " ba";
+        }
+
+        $building_area_total = $this->format_integer_value( $structure["building_area_total"] ?? null );
+        if ( $building_area_total !== "" ) {
+            $facts[] = $building_area_total . " sqft";
+        }
+
+        $status = isset( $item["status"] ) && is_scalar( $item["status"] ) ? trim( (string) $item["status"] ) : "";
+        $photo_url = $this->resolve_card_photo_url( $item );
+        $compliance_view_model = $this->map_compact_compliance_for_card_view_model( $compliance );
+
+        return [
+            "card_class" => trim( "cl-card " . $aspect_ratio_class . " is-clickable" ),
+            "detail_url" => $detail_url,
+            "photo_url" => $photo_url,
+            "image_alt" => $address_display,
+            "price" => $this->format_price( $market["list_price"] ?? null ),
+            "address_display" => $address_display,
+            "location" => $location,
+            "facts" => implode( " | ", $facts ),
+            "status" => $status,
+            "link_target" => $link_target,
+            // Preserve canonical compact compliance payload in the card view model.
+            "compliance_compact" => $compliance,
+            "compliance_source_mls_name" => $compliance_view_model["compliance_source_mls_name"],
+            "compliance_listing_firm_name" => $compliance_view_model["compliance_listing_firm_name"],
+            "compliance_listing_firm_mls_id" => $compliance_view_model["compliance_listing_firm_mls_id"],
+            "compliance_idx_icon_url" => $compliance_view_model["compliance_idx_icon_url"],
+            "compliance_idx_icon_alt" => $compliance_view_model["compliance_idx_icon_alt"],
+            "compliance_copyright_text" => $compliance_view_model["compliance_copyright_text"],
+            "compliance_is_other_participant_listing" => $compliance_view_model["compliance_is_other_participant_listing"],
+        ];
+    }
+
+    private function map_compact_compliance_for_card_view_model( array $compliance ): array {
+        return [
+            "compliance_source_mls_name" => isset( $compliance["source_mls_name"] ) && is_scalar( $compliance["source_mls_name"] ) ? trim( (string) $compliance["source_mls_name"] ) : "",
+            "compliance_listing_firm_name" => isset( $compliance["listing_firm_name"] ) && is_scalar( $compliance["listing_firm_name"] ) ? trim( (string) $compliance["listing_firm_name"] ) : "",
+            "compliance_listing_firm_mls_id" => isset( $compliance["listing_firm_mls_id"] ) && is_scalar( $compliance["listing_firm_mls_id"] ) ? trim( (string) $compliance["listing_firm_mls_id"] ) : "",
+            "compliance_idx_icon_url" => isset( $compliance["idx_icon_url"] ) && is_scalar( $compliance["idx_icon_url"] ) ? trim( (string) $compliance["idx_icon_url"] ) : "",
+            "compliance_idx_icon_alt" => isset( $compliance["idx_icon_alt"] ) && is_scalar( $compliance["idx_icon_alt"] ) ? trim( (string) $compliance["idx_icon_alt"] ) : "",
+            "compliance_copyright_text" => isset( $compliance["copyright_text"] ) && is_scalar( $compliance["copyright_text"] ) ? trim( (string) $compliance["copyright_text"] ) : "",
+            "compliance_is_other_participant_listing" => ! empty( $compliance["is_other_participant_listing"] ),
+        ];
+    }
+
+    private function resolve_card_detail_url( array $item ): string {
+        if ( ! isset( $item["detail_url"] ) || ! is_scalar( $item["detail_url"] ) ) {
+            return "";
+        }
+
+        $detail_url = esc_url_raw( trim( (string) $item["detail_url"] ) );
+        return is_string( $detail_url ) ? trim( $detail_url ) : "";
+    }
+
+    private function resolve_card_photo_url( array $item ): string {
+        $media = isset( $item["media"] ) && is_array( $item["media"] ) ? $item["media"] : [];
+        $candidate = "";
+
+        if ( isset( $media["primary"] ) && is_string( $media["primary"] ) ) {
+            $candidate = trim( $media["primary"] );
+        } elseif ( isset( $media["primary"] ) && is_array( $media["primary"] ) && isset( $media["primary"]["url"] ) && is_scalar( $media["primary"]["url"] ) ) {
+            $candidate = trim( (string) $media["primary"]["url"] );
+        } elseif ( isset( $media["primary_photo"] ) && is_string( $media["primary_photo"] ) ) {
+            $candidate = trim( $media["primary_photo"] );
+        }
+
+        if ( $candidate === "" ) {
+            return "";
+        }
+
+        $sanitized = esc_url_raw( $candidate );
+        return is_string( $sanitized ) ? trim( $sanitized ) : "";
+    }
+
+    private function format_price( $value ): string {
+        if ( ! is_numeric( $value ) ) {
+            return "";
+        }
+
+        return "$" . number_format( (float) $value, 0 );
+    }
+
+    private function format_numeric_value( $value ): string {
+        if ( ! is_numeric( $value ) ) {
+            return "";
+        }
+
+        $number = (float) $value;
+        if ( floor( $number ) === $number ) {
+            return (string) (int) $number;
+        }
+
+        return rtrim( rtrim( (string) $number, "0" ), "." );
+    }
+
+    private function format_integer_value( $value ): string {
+        if ( ! is_numeric( $value ) ) {
+            return "";
+        }
+
+        return number_format( (float) $value, 0 );
     }
 
     private function is_listing_detail_context(): bool {
@@ -440,15 +583,15 @@ class Listing_Carousel_Element extends Element {
         return false;
     }
 
-    private function build_itemlist_schema( array $items, array $settings ): ?array {
-        if ( empty( $items ) ) {
+    private function build_itemlist_schema( array $card_view_models, array $settings ): ?array {
+        if ( empty( $card_view_models ) ) {
             return null;
         }
 
         $item_list_elements = [];
         $position = 1;
 
-        foreach ( $items as $item ) {
+        foreach ( $card_view_models as $item ) {
             if ( ! is_array( $item ) ) {
                 continue;
             }
@@ -500,22 +643,16 @@ class Listing_Carousel_Element extends Element {
     }
 
     private function resolve_item_url( array $item ): string {
-        $listing_id = $item["listing_id"] ?? "";
-        if ( \cllc_is_blank( $listing_id ) ) {
-            return "";
-        }
-
-        $link = home_url( "/listing/" . rawurlencode( (string) $listing_id ) . "/" );
-        $link = esc_url_raw( $link );
-
-        return $link !== "" ? $link : "";
+        $detail_url = isset( $item["detail_url"] ) && is_string( $item["detail_url"] )
+            ? trim( $item["detail_url"] )
+            : "";
+        $detail_url = esc_url_raw( $detail_url );
+        return is_string( $detail_url ) ? trim( $detail_url ) : "";
     }
 
     private function resolve_item_name( array $item ): string {
-        $address = $item["address"]["display"] ?? "";
-
-        $address = trim( (string) $address );
-        return $address;
+        $address = isset( $item["address_display"] ) ? (string) $item["address_display"] : "";
+        return trim( $address );
     }
 
     private function resolve_schema_name( array $settings ): string {
@@ -592,11 +729,13 @@ class Listing_Carousel_Element extends Element {
     private function enqueue_assets(): void {
         $style_url = plugins_url( "assets/css/listing-collection.css", CLLC_PLUGIN_FILE );
         $grid_style_url = plugins_url( "listing-grid/listing-grid.css", CLLC_PLUGIN_FILE );
-        $card_style_url = plugins_url( "listing-card/listing-card.css", CLLC_PLUGIN_FILE );
 
         wp_enqueue_style( "cllc-listing-collection", $style_url, [], CLLC_VERSION );
         wp_enqueue_style( "cllc-listing-grid", $grid_style_url, [], CLLC_VERSION );
-        wp_enqueue_style( "cllc-listing-card", $card_style_url, [], CLLC_VERSION );
+
+        if ( wp_style_is( "cl-property-components", "registered" ) ) {
+            wp_enqueue_style( "cl-property-components" );
+        }
     }
 
     private function get_property_type_options(): array {
@@ -709,6 +848,89 @@ class Listing_Carousel_Element extends Element {
 
     private function is_unresolved_dynamic_placeholder( string $value ): bool {
         return 1 === preg_match( '/^\{[a-z0-9_:-]+\}$/i', trim( $value ) );
+    }
+
+    private function resolve_geo_shape_id_input( array $settings ): string {
+        $resolved_value = $this->resolve_dynamic_text_setting(
+            $settings,
+            [
+                "geo_shape_id_input",
+            ]
+        );
+
+        if ( "" === $resolved_value ) {
+            return "";
+        }
+
+        return $this->sanitize_geo_shape_id( $resolved_value );
+    }
+
+    private function resolve_legacy_community_input( array $settings ): string {
+        $resolved_value = $this->resolve_dynamic_text_setting(
+            $settings,
+            [
+                "community_key_input",
+                "community_key",
+            ]
+        );
+
+        if ( "" === $resolved_value ) {
+            return "";
+        }
+
+        return $this->sanitize_legacy_community( $resolved_value );
+    }
+
+    private function resolve_dynamic_text_setting( array $settings, array $setting_keys ): string {
+        foreach ( $setting_keys as $setting_key ) {
+            if ( ! is_string( $setting_key ) || ! array_key_exists( $setting_key, $settings ) ) {
+                continue;
+            }
+
+            $raw = $settings[ $setting_key ];
+            $resolved = $this->render_dynamic_data( $raw, get_the_ID() );
+            if ( ! is_scalar( $resolved ) ) {
+                continue;
+            }
+
+            $resolved_string = trim( (string) $resolved );
+            if ( $this->is_unresolved_dynamic_placeholder( $resolved_string ) ) {
+                continue;
+            }
+
+            if ( "" !== $resolved_string ) {
+                return $resolved_string;
+            }
+        }
+
+        return "";
+    }
+
+    private function sanitize_geo_shape_id( string $value ): string {
+        $normalized = strtolower( trim( sanitize_text_field( $value ) ) );
+        if ( "" === $normalized ) {
+            return "";
+        }
+
+        if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
+            $this->log_warning( "Invalid geo_shape_id_input format; rendering empty state." );
+            return "";
+        }
+
+        return $normalized;
+    }
+
+    private function sanitize_legacy_community( string $value ): string {
+        $normalized = strtolower( trim( sanitize_text_field( $value ) ) );
+        if ( "" === $normalized ) {
+            return "";
+        }
+
+        if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
+            return "";
+        }
+
+        return $normalized;
     }
 
     private function log_warning( string $message ): void {

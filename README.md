@@ -5,10 +5,11 @@ SSR listing presentation plugin for collection-style embeds. The active Bricks e
 
 ## Inputs
 - Builder controls:
+  - `geo_shape_id_input`
   - `community_key_input`
   - canonical listing filters such as `limit`, `sort`, `order`, `property_type`, `property_subtype`, `status`, `price_min`, `price_max`, `beds_min`, and `baths_min`
 - Runtime fallback:
-  - legacy saved `community_key`
+  - legacy saved `community_key` (backward compatibility only)
 
 ## Output
 - SSR listing cards
@@ -20,7 +21,7 @@ SSR listing presentation plugin for collection-style embeds. The active Bricks e
 - `/api/properties/search`
 
 ## Known Constraints
-- `community_key_input` is the builder-facing community control
-- runtime falls back to legacy `community_key`
-- dynamic community values are resolved with Bricks-native `render_dynamic_data()`
+- `geo_shape_id_input` is the preferred builder-facing geographic control
+- runtime may use legacy `community_key_input` or `community_key` only as explicit fallback when `geo_shape_id_input` is not resolved
+- dynamic geographic values are resolved with Bricks-native `render_dynamic_data()`, then sanitized
 - this plugin consumes canonical listing fields only and does not perform client-side schema shaping

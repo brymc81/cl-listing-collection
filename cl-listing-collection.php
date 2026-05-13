@@ -27,20 +27,6 @@ function cllc_register_bricks_elements(): void {
         return;
     }
 
-    $listing_card_file = CLLC_PLUGIN_DIR . "listing-card/listing-card.php";
-    if ( ! file_exists( $listing_card_file ) ) {
-        cllc_log_bricks( "Listing card file missing: " . $listing_card_file );
-        return;
-    }
-    require_once $listing_card_file;
-
-    $listing_grid_file = CLLC_PLUGIN_DIR . "listing-grid/listing-grid.php";
-    if ( ! file_exists( $listing_grid_file ) ) {
-        cllc_log_bricks( "Listing grid file missing: " . $listing_grid_file );
-        return;
-    }
-    require_once $listing_grid_file;
-
     $element_file = CLLC_PLUGIN_DIR . "includes/bricks/class-listing-carousel-element.php";
     if ( ! file_exists( $element_file ) ) {
         cllc_log_bricks( "Element file missing: " . $element_file );
@@ -83,8 +69,6 @@ function cllc_maybe_clear_bricks_cache(): void {
 
     $element_files = [
         CLLC_PLUGIN_FILE,
-        CLLC_PLUGIN_DIR . "listing-card/listing-card.php",
-        CLLC_PLUGIN_DIR . "listing-grid/listing-grid.php",
         CLLC_PLUGIN_DIR . "includes/bricks/class-listing-carousel-element.php",
     ];
 
@@ -153,86 +137,6 @@ function cllc_sanitize_float( $value ): ?float {
     }
 
     return (float) $value;
-}
-
-/**
- * Normalize context identity and slug values.
- */
-function cllc_normalize_context_identity( $value ): string {
-    if ( ! is_string( $value ) ) {
-        return "";
-    }
-
-    $normalized = trim( sanitize_text_field( $value ) );
-    return "" !== $normalized ? $normalized : "";
-}
-
-/**
- * Resolve cl-reso-link community context endpoint.
- */
-function cllc_get_community_context_endpoint(): string {
-    $endpoint = rest_url( "cl-reso-link/v1/community" );
-    return (string) apply_filters( "cl_listing_collection_context_endpoint", $endpoint );
-}
-
-/**
- * Resolve community context by community_key and return canonical slug.
- *
- * @return array<string, string>|null
- */
-function cllc_resolve_community_context( $community_key ) {
-    $community_key_raw = is_string( $community_key ) ? cllc_normalize_context_identity( $community_key ) : "";
-    if ( "" === $community_key_raw ) {
-        return null;
-    }
-
-    $endpoint = cllc_get_community_context_endpoint();
-    if ( "" === $endpoint ) {
-        return null;
-    }
-
-    $url = add_query_arg(
-        [
-            "community_key" => $community_key_raw,
-        ],
-        $endpoint
-    );
-
-    $response = wp_remote_get(
-        $url,
-        [
-            "timeout" => 8,
-            "headers" => [
-                "Accept" => "application/json",
-            ],
-        ]
-    );
-    if ( is_wp_error( $response ) ) {
-        return null;
-    }
-
-    if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
-        return null;
-    }
-
-    $decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-    if ( ! is_array( $decoded ) || ! isset( $decoded["community"] ) || ! is_array( $decoded["community"] ) ) {
-        return null;
-    }
-
-    $slug = $decoded["community"]["slug"] ?? "";
-    if ( ! is_string( $slug ) ) {
-        return null;
-    }
-    $slug = cllc_normalize_context_identity( $slug );
-    if ( "" === $slug ) {
-        return null;
-    }
-
-    return [
-        "community_key" => $community_key_raw,
-        "slug" => $slug,
-    ];
 }
 
 /**

@@ -1,3 +1,6 @@
+/* Deprecated legacy stylesheet.
+ * Not used by active cl-listing-carousel rendering, which uses cl-property-components (.clpc-*).
+ */
 .cl-listing-card {
   display: block;
   text-decoration: none;

@@ -5,7 +5,7 @@
   align-items: start;
 }
 
-.cl-listing-grid .cl-listing-card {
+.cl-listing-grid .clpc-card {
   min-width: 0;
 }
 
@@ -19,7 +19,7 @@
   align-items: stretch;
 }
 
-.cl-listing-carousel .cl-listing-grid .cl-listing-card {
+.cl-listing-carousel .cl-listing-grid .clpc-card {
   flex: 0 0 clamp(240px, 72vw, 360px);
   scroll-snap-align: start;
   scroll-snap-stop: always;

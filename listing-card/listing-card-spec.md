@@ -1,3 +1,7 @@
+> **Documentation Status:** Historical / archive reference.
+>
+> This document preserves prior implementation context, validation evidence, or design history. It is not current architecture authority. For current ownership and contract rules, start with the nearest `docs/DOCS_AUTHORITY.md` file and the central `wp-content/docs/architecture/` summaries.
+
 # Legacy Listing Card Spec (Deprecated)
 
 Status: deprecated and not active in the `cl-listing-carousel` render path.

@@ -10,10 +10,13 @@ embeds and collection UI such as carousels or grids.
 
 ## External Authorities
 
-- `../../cl-reso-link/docs/*` owns canonical listing data, search/geography
-  contracts, compliance, canonical URLs, and MLS/RESO meaning.
-- `../../cl-property-components/docs/*` owns reusable card and saved-row
-  presentation contracts when this plugin delegates rendering.
+- `../../cl-reso-link/docs/DOCS_AUTHORITY.md` owns canonical listing data,
+  search/geography contracts, compliance, canonical URLs, media, and MLS/RESO
+  meaning.
+- `../../cl-property-components/docs/DOCS_AUTHORITY.md` owns reusable card and
+  saved-row presentation contracts when this plugin delegates rendering.
+- `../../../docs/architecture/consumer-plugin-boundaries.md` summarizes shared
+  consumer-plugin rules without replacing the owning plugin contracts.
 
 ## Local Authority
 
@@ -23,4 +26,3 @@ embeds and collection UI such as carousels or grids.
 
 Local docs must not query MLS providers, normalize MLS data, invent compliance
 text, or construct listing URLs from guessed identity.
-

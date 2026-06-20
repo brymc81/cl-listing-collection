@@ -3,6 +3,8 @@
 ## Purpose
 SSR listing presentation plugin for collection-style embeds. The active Bricks element in this plugin is `cl-listing-carousel`.
 
+Start with `docs/DOCS_AUTHORITY.md` for current documentation authority. Listing/search, compliance, canonical URLs, media, and listing meaning remain owned by `../cl-reso-link/docs/DOCS_AUTHORITY.md`; reusable card internals are delegated to `../cl-property-components/docs/DOCS_AUTHORITY.md`.
+
 ## Inputs
 - Builder controls:
   - `geo_shape_id_input`

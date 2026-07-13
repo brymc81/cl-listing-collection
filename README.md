@@ -8,10 +8,9 @@ Start with `docs/DOCS_AUTHORITY.md` for current documentation authority. Listing
 ## Inputs
 - Builder controls:
   - `geo_shape_id_input`
-  - `community_key_input`
   - canonical listing filters such as `limit`, `sort`, `order`, `property_type`, `property_subtype`, `status`, `price_min`, `price_max`, `beds_min`, and `baths_min`
-- Runtime fallback:
-  - legacy saved `community_key` (backward compatibility only)
+
+`property_type` is a single-select broad category. Its canonical values are `Residential` (the default), `Rental`, `Multi-Family`, and `Vacant Land`. `property_subtype` remains a separate narrower filter.
 
 ## Output
 - SSR listing cards
@@ -23,7 +22,7 @@ Start with `docs/DOCS_AUTHORITY.md` for current documentation authority. Listing
 - `/api/properties/search`
 
 ## Known Constraints
-- `geo_shape_id_input` is the preferred builder-facing geographic control
-- runtime may use legacy `community_key_input` or `community_key` only as explicit fallback when `geo_shape_id_input` is not resolved
+- `geo_shape_id_input` is the sole builder-facing geographic control; without a valid resolved value, the carousel renders its safe empty state
+- The prior Community Key fallback has been removed; saved values under that legacy control are ignored
 - dynamic geographic values are resolved with Bricks-native `render_dynamic_data()`, then sanitized
 - this plugin consumes canonical listing fields only and does not perform client-side schema shaping

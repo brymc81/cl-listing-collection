@@ -59,15 +59,6 @@ class Listing_Carousel_Element extends Element {
             "hasDynamicData" => true,
         ];
 
-        $this->controls["community_key_input"] = [
-            "tab" => "content",
-            "group" => "query",
-            "label" => __( "Community Key (Legacy Fallback)", "cl-listing-collection" ),
-            "type" => "text",
-            "placeholder" => "mount_pleasant",
-            "hasDynamicData" => true,
-        ];
-
         $this->controls["limit"] = [
             "group" => "query",
             "label" => __( "Limit", "cl-listing-collection" ),
@@ -105,9 +96,7 @@ class Listing_Carousel_Element extends Element {
             "label" => __( "Property Type", "cl-listing-collection" ),
             "type" => "select",
             "options" => $this->get_property_type_options(),
-            "multiple" => true,
-            "default" => [],
-            "placeholder" => __( "Select property type", "cl-listing-collection" ),
+            "default" => "Residential",
         ];
 
         $this->controls["property_subtype"] = [
@@ -324,8 +313,7 @@ class Listing_Carousel_Element extends Element {
         $settings = is_array( $this->settings ) ? $this->settings : [];
 
         $geo_shape_id = $this->resolve_geo_shape_id_input( $settings );
-        $legacy_community = $this->resolve_legacy_community_input( $settings );
-        if ( "" === $geo_shape_id && "" === $legacy_community ) {
+        if ( "" === $geo_shape_id ) {
             $this->log_warning( "Missing required geographic input; rendering empty state." );
             $this->enqueue_assets();
             $this->render_empty_state();
@@ -358,16 +346,11 @@ class Listing_Carousel_Element extends Element {
             "sort" => $normalized_sort["sort"],
             "order" => $normalized_sort["order"],
         ];
-        if ( "" !== $geo_shape_id ) {
-            $filters["geo_shape_id"] = $geo_shape_id;
-        } elseif ( "" !== $legacy_community ) {
-            // Backward compatibility only: legacy community inputs map to canonical community filter.
-            $filters["community"] = $legacy_community;
-        }
+        $filters["geo_shape_id"] = $geo_shape_id;
 
-        $property_types = $this->normalize_multi_select_value( $settings["property_type"] ?? null );
-        if ( [] !== $property_types ) {
-            $filters["property_type"] = implode( ",", $property_types );
+        $property_type = $this->normalize_property_type_value( $settings["property_type"] ?? "Residential" );
+        if ( "" !== $property_type ) {
+            $filters["property_type"] = $property_type;
         }
 
         $property_sub_types = $this->normalize_multi_select_value( $settings["property_subtype"] ?? null );
@@ -938,19 +921,12 @@ class Listing_Carousel_Element extends Element {
     }
 
     private function get_property_type_options(): array {
-        $defaults = [
-            "Single Family Detached" => __( "Single Family Detached", "cl-listing-collection" ),
-            "Single Family Attached" => __( "Single Family Attached", "cl-listing-collection" ),
-            "Multi Family" => __( "Multi Family", "cl-listing-collection" ),
+        return [
+            "Residential" => __( "Residential", "cl-listing-collection" ),
+            "Rental" => __( "Rental", "cl-listing-collection" ),
+            "Multi-Family" => __( "Multi-Family", "cl-listing-collection" ),
             "Vacant Land" => __( "Vacant Land", "cl-listing-collection" ),
         ];
-
-        $options = apply_filters( "cllc_property_type_options", $defaults );
-        if ( ! is_array( $options ) ) {
-            return $defaults;
-        }
-
-        return $options;
     }
 
     private function get_property_subtype_options(): array {
@@ -1022,6 +998,28 @@ class Listing_Carousel_Element extends Element {
         return array_values( array_unique( $resolved ) );
     }
 
+    /**
+     * Resolve a single canonical broad property type from current or legacy saved settings.
+     *
+     * Legacy multi-select arrays are tolerated so old Bricks elements remain renderable, but
+     * only an already-canonical broad value is forwarded. Unusable values use the documented
+     * Residential default rather than leaving the request unscoped.
+     *
+     * @param mixed $value
+     */
+    private function normalize_property_type_value( $value ): string {
+        $canonical_values = [ "Residential", "Rental", "Multi-Family", "Vacant Land" ];
+        $candidates = $this->normalize_multi_select_value( $value );
+
+        foreach ( $candidates as $candidate ) {
+            if ( in_array( $candidate, $canonical_values, true ) ) {
+                return $candidate;
+            }
+        }
+
+        return "Residential";
+    }
+
     private function normalize_sort_value( string $sort_value, string $order_value ): array {
         $defaults = [
             "modified" => "desc",
@@ -1064,22 +1062,6 @@ class Listing_Carousel_Element extends Element {
         return $this->sanitize_geo_shape_id( $resolved_value );
     }
 
-    private function resolve_legacy_community_input( array $settings ): string {
-        $resolved_value = $this->resolve_dynamic_text_setting(
-            $settings,
-            [
-                "community_key_input",
-                "community_key",
-            ]
-        );
-
-        if ( "" === $resolved_value ) {
-            return "";
-        }
-
-        return $this->sanitize_legacy_community( $resolved_value );
-    }
-
     private function resolve_dynamic_text_setting( array $settings, array $setting_keys ): string {
         foreach ( $setting_keys as $setting_key ) {
             if ( ! is_string( $setting_key ) || ! array_key_exists( $setting_key, $settings ) ) {
@@ -1113,19 +1095,6 @@ class Listing_Carousel_Element extends Element {
 
         if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
             $this->log_warning( "Invalid geo_shape_id_input format; rendering empty state." );
-            return "";
-        }
-
-        return $normalized;
-    }
-
-    private function sanitize_legacy_community( string $value ): string {
-        $normalized = strtolower( trim( sanitize_text_field( $value ) ) );
-        if ( "" === $normalized ) {
-            return "";
-        }
-
-        if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
             return "";
         }
 

@@ -23,17 +23,14 @@ This plugin consumes canonical listing data from `cl-reso-link` and renders SSR-
 - No compensation display.
 - No local compliance text invented by the carousel.
 - No URL guessing from slug, path, query context, listing ID, or community identity.
-- No geographic guessing from slug, path, title, post metadata, or legacy community inputs.
+- No geographic guessing from slug, path, title, post metadata, or any other source.
 
 ## Geographic Resolution
 
-- `geo_shape_id_input` is the preferred builder control key for geography-scoped listing collections.
+- `geo_shape_id_input` is the sole supported builder control key for geography-scoped listing collections.
 - Resolve dynamic values with Bricks runtime methods before sanitizing.
 - Sanitize after dynamic resolution.
 - Convert resolved `geo_shape_id_input` to canonical `geo_shape_id` request filter.
-- Preserve legacy saved `community_key` or `community_key_input` only when explicitly documented as backward compatibility.
-- Legacy community inputs must not be inferred from URL, slug, path, post title, or frontend context.
-- Legacy community inputs, when used, must map only to canonical `community` filter semantics allowed by current `cl-reso-link` docs.
 - If no valid canonical geographic input is resolved, render the safe empty state.
 
 ## Canonical Data Use

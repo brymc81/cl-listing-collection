@@ -31,13 +31,12 @@ The carousel does not:
 
 ### Builder / Runtime Geography
 
-- `geo_shape_id_input` is the preferred builder control key.
+- `geo_shape_id_input` is the sole supported builder control key.
 - Dynamic values must be resolved with Bricks runtime methods before sanitization.
 - The resolved value must be sanitized after dynamic resolution.
 - A valid resolved `geo_shape_id_input` maps directly to canonical `geo_shape_id`.
-- Legacy saved `community_key_input` or `community_key` may be read only for backward compatibility.
-- Legacy community fallback must map only to canonical `community` filter semantics and must not involve slug/path inference.
 - If no valid canonical geographic input resolves, render the safe empty state.
+- The prior Community Key fallback is removed; saved values from that retired control are ignored.
 
 ### Query Controls
 
@@ -46,7 +45,6 @@ The carousel may forward only allowlisted canonical search options to `cl-reso-l
 Allowed today:
 
 - `geo_shape_id`
-- `community`
 - `limit`
 - `sort`
 - `order`
@@ -57,6 +55,8 @@ Allowed today:
 - `price_max`
 - `beds_min`
 - `baths_min`
+
+`property_type` is a single-select broad category with exactly these canonical values: `Residential`, `Rental`, `Multi-Family`, and `Vacant Land`. Its builder default is `Residential`. `property_subtype` is a separate narrower filter; it is not a substitute for broad `property_type` values.
 
 Presentation-only controls that do not change canonical search semantics:
 
@@ -214,4 +214,4 @@ Before a carousel refactor is accepted:
 10. Confirm the implementation still points to `cl-reso-link/docs/*` for engine and compliance authority rather than duplicating schema details locally.
 11. Confirm rendered cards and ItemList entries include only canonical payload URLs and never local `/listing/{id}/` URL construction.
 12. Confirm `geo_shape_id` is included in request filters only when explicitly supplied via builder/runtime input.
-13. Confirm legacy community fallback is used only when `geo_shape_id_input` is unresolved and legacy input is explicitly present.
+13. Confirm missing or invalid `geo_shape_id_input` renders the safe empty state without a geographic fallback.

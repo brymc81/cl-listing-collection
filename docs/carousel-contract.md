@@ -78,6 +78,9 @@ Layout control behavior:
 - `image_aspect_ratio` continues to control the card ratio class and may also be exposed on the wrapper as `--cllc-image-ratio`.
 - CSS must consume these values with safe fallbacks so existing elements without explicit layout settings preserve current appearance.
 - Variables are scoped per instance wrapper so multiple carousel instances can use different sizing on the same page.
+- Carousel image frames must keep a fixed ratio even when the primary listing photo is portrait/vertical.
+- Primary photos should fill that frame with `object-fit: cover` and must not increase card height or break row alignment.
+- Current `cl-property-components` card markup uses `.clpc-card-link` as the media-only wrapper; if that selector ever wraps the full card, carousel CSS must target the replacement media frame instead.
 
 Display control behavior:
 
@@ -95,6 +98,12 @@ Compact recommended config (presentation only):
 - `show_facts`: `false`
 - `show_status`: `false`
 - `compliance_display`: `compact`
+
+Portrait-image QA note:
+
+- Use at least one listing fixture whose `media.primary_photo` is a vertical image.
+- Confirm every carousel card keeps the same image frame height and the row remains aligned.
+- Confirm IDX/compliance text and icons remain visible and unchanged below the image.
 
 Future additions must be added only after this document and the canonical engine docs are updated together.
 

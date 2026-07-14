@@ -8,9 +8,11 @@ Start with `docs/DOCS_AUTHORITY.md` for current documentation authority. Listing
 ## Inputs
 - Builder controls:
   - `geo_shape_id_input`
-  - canonical listing filters such as `limit`, `sort`, `order`, `property_type`, `property_subtype`, `status`, `price_min`, `price_max`, `beds_min`, and `baths_min`
+  - canonical listing filters such as `limit`, `sort`, `order`, `property_type`, `property_subtype`, `style`, `status`, `price_min`, `price_max`, `beds_min`, and `baths_min`
 
 `property_type` is a single-select broad category. Its canonical values are `Residential` (the default), `Rental`, `Multi-Family`, and `Vacant Land`. `property_subtype` remains a separate narrower filter.
+
+`style` accepts exact canonical values, including comma-separated multiple values, and forwards them to `cl-reso-link`. It does not infer or modify `property_subtype`; `cl-reso-link` remains authoritative for style meaning and search behavior.
 
 ## Output
 - SSR listing cards

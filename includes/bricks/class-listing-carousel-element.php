@@ -108,6 +108,15 @@ class Listing_Carousel_Element extends Element {
             "placeholder" => __( "Select property subtypes", "cl-listing-collection" ),
         ];
 
+        $this->controls["style"] = [
+            "group" => "query",
+            "label" => __( "Listing Style", "cl-listing-collection" ),
+            "type" => "text",
+            "placeholder" => "Charleston Single",
+            "hasDynamicData" => true,
+            "description" => __( "Accepts exact canonical style values; separate multiple values with commas.", "cl-listing-collection" ),
+        ];
+
         $this->controls["status"] = [
             "group" => "query",
             "label" => __( "Status", "cl-listing-collection" ),
@@ -356,6 +365,12 @@ class Listing_Carousel_Element extends Element {
         $property_sub_types = $this->normalize_multi_select_value( $settings["property_subtype"] ?? null );
         if ( [] !== $property_sub_types ) {
             $filters["property_subtype"] = implode( ",", $property_sub_types );
+        }
+
+        $resolved_style = $this->resolve_dynamic_text_setting( $settings, [ "style" ] );
+        $styles = $this->normalize_multi_select_value( $resolved_style );
+        if ( [] !== $styles ) {
+            $filters["style"] = implode( ",", $styles );
         }
 
         $statuses = $this->normalize_multi_select_value( $settings["status"] ?? null );

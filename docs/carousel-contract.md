@@ -50,6 +50,7 @@ Allowed today:
 - `order`
 - `property_type`
 - `property_subtype`
+- `style`
 - `status`
 - `price_min`
 - `price_max`
@@ -57,6 +58,8 @@ Allowed today:
 - `baths_min`
 
 `property_type` is a single-select broad category with exactly these canonical values: `Residential`, `Rental`, `Multi-Family`, and `Vacant Land`. Its builder default is `Residential`. `property_subtype` is a separate narrower filter; it is not a substitute for broad `property_type` values.
+
+`style` is an optional canonical text filter. Dynamic Bricks values resolve before generic text sanitization; non-empty exact values are forwarded as a comma-separated list. The carousel does not infer `property_subtype`, define style vocabulary, or interpret style meaning. Those responsibilities remain with `cl-reso-link`.
 
 Presentation-only controls that do not change canonical search semantics:
 

@@ -7,8 +7,13 @@ namespace Bricks {
         public $settings = [];
         public $controls = [];
         public $control_groups = [];
+        public $dynamic_data = [];
 
         public function render_dynamic_data( $value, $post_id ) {
+            if ( is_string( $value ) && array_key_exists( $value, $this->dynamic_data ) ) {
+                return $this->dynamic_data[ $value ];
+            }
+
             return $value;
         }
     }
@@ -119,6 +124,17 @@ namespace {
     assert_true( ! array_key_exists( "multiple", $property_type_control ), "Property Type: single-select control" );
     assert_true( ! array_key_exists( "community" . "_key_input", $element->controls ), "Geography: legacy Community Key control removed" );
 
+    $style_control = $element->controls["style"] ?? [];
+    assert_true(
+        ( $style_control["label"] ?? null ) === "Listing Style"
+            && ( $style_control["type"] ?? null ) === "text"
+            && ( $style_control["group"] ?? null ) === "query"
+            && ( $style_control["placeholder"] ?? null ) === "Charleston Single"
+            && true === ( $style_control["hasDynamicData"] ?? null )
+            && ( $style_control["description"] ?? null ) === "Accepts exact canonical style values; separate multiple values with commas.",
+        "Style: canonical dynamic text control is registered"
+    );
+
     [ $filters ] = render_with_settings( $element, [ "geo_shape_id_input" => "downtown_charleston__ansonborough" ] );
     assert_true( is_array( $filters ) && ( $filters["property_type"] ?? null ) === "Residential", "Filters: missing setting forwards default Residential" );
 
@@ -159,6 +175,61 @@ namespace {
         "property_type" => [ "Rental", "Vacant Land" ],
     ] );
     assert_true( is_array( $filters ) && ( $filters["property_type"] ?? null ) === "Rental", "Filters: legacy array setting remains renderable and forwards one canonical value" );
+
+    [ $filters ] = render_with_settings( $element, [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "style" => "",
+    ] );
+    assert_true( is_array( $filters ) && ! array_key_exists( "style", $filters ), "Style: blank value is omitted" );
+
+    [ $filters ] = render_with_settings( $element, [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "style" => "Charleston Single",
+    ] );
+    assert_true(
+        is_array( $filters )
+            && ( $filters["style"] ?? null ) === "Charleston Single"
+            && ! array_key_exists( "property_subtype", $filters ),
+        "Style: exact value forwards without inferring Property Subtype"
+    );
+
+    [ $filters ] = render_with_settings( $element, [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "style" => " Charleston Single , Traditional ",
+    ] );
+    assert_true( is_array( $filters ) && ( $filters["style"] ?? null ) === "Charleston Single,Traditional", "Style: comma-separated values are sanitized and forwarded" );
+
+    [ $filters ] = render_with_settings( $element, [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "style" => "Charleston Single, ,Traditional,Charleston Single, ",
+    ] );
+    assert_true( is_array( $filters ) && ( $filters["style"] ?? null ) === "Charleston Single,Traditional", "Style: duplicate and blank entries are removed" );
+
+    $element->dynamic_data["{listing_style}"] = "Charleston Single, Traditional";
+    [ $filters ] = render_with_settings( $element, [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "style" => "{listing_style}",
+    ] );
+    $element->dynamic_data = [];
+    assert_true( is_array( $filters ) && ( $filters["style"] ?? null ) === "Charleston Single,Traditional", "Style: Bricks dynamic text resolves before sanitization and forwarding" );
+
+    $existing_filter_settings = [
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "limit" => 7,
+        "sort" => "price",
+        "order" => "asc",
+        "property_type" => "Residential",
+        "property_subtype" => [ "Single Family Detached" ],
+        "status" => [ "Active", "Pending" ],
+        "price_min" => 400000,
+        "price_max" => 900000,
+        "beds_min" => 3,
+        "baths_min" => 2,
+    ];
+    [ $filters_without_style ] = render_with_settings( $element, $existing_filter_settings );
+    [ $filters_with_style ] = render_with_settings( $element, $existing_filter_settings + [ "style" => "Charleston Single" ] );
+    unset( $filters_with_style["style"] );
+    assert_true( $filters_with_style === $filters_without_style, "Style: existing request filters remain unchanged" );
 
     [ $filters, $html ] = render_with_settings( $element, [
         "community" . "_key_input" => "mount_pleasant",

@@ -56,10 +56,19 @@ Allowed today:
 - `price_max`
 - `beds_min`
 - `baths_min`
+- `sqft_min`
+- `sqft_max`
+- `year_min`
+- `year_max`
+- `acres_min`
+- `acres_max`
+- `primary_bedroom_main_level`
 
 `property_type` is a single-select broad category with exactly these canonical values: `Residential`, `Rental`, `Multi-Family`, and `Vacant Land`. Its builder default is `Residential`. `property_subtype` is a separate narrower filter; it is not a substitute for broad `property_type` values.
 
 `style` is an optional canonical text filter. Dynamic Bricks values resolve before generic text sanitization; non-empty exact values are forwarded as a comma-separated list. The carousel does not infer `property_subtype`, define style vocabulary, or interpret style meaning. Those responsibilities remain with `cl-reso-link`.
+
+For `price`, square-feet, year-built, and acreage min/max pairs, a supplied minimum greater than its supplied maximum causes both values in that pair to be omitted. Equal values are preserved. `primary_bedroom_main_level` forwards only the canonical `true` value; blank, false, or invalid values apply no filter. Final parameter validation and search semantics remain owned by `cl-reso-link`.
 
 Presentation-only controls that do not change canonical search semantics:
 

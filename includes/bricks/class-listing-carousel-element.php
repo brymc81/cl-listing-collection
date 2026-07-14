@@ -35,6 +35,9 @@ class Listing_Carousel_Element extends Element {
         $this->control_groups["query"] = [
             "title" => __( "Query", "cl-listing-collection" ),
         ];
+        $this->control_groups["property_filters"] = [
+            "title" => __( "Property Filters", "cl-listing-collection" ),
+        ];
         $this->control_groups["advanced"] = [
             "title" => __( "Advanced", "cl-listing-collection" ),
         ];
@@ -128,27 +131,80 @@ class Listing_Carousel_Element extends Element {
         ];
 
         $this->controls["price_min"] = [
-            "group" => "query",
+            "group" => "property_filters",
             "label" => __( "Price Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["price_max"] = [
-            "group" => "query",
+            "group" => "property_filters",
             "label" => __( "Price Max", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["beds_min"] = [
-            "group" => "query",
+            "group" => "property_filters",
             "label" => __( "Beds Min", "cl-listing-collection" ),
             "type" => "number",
         ];
 
         $this->controls["baths_min"] = [
-            "group" => "query",
+            "group" => "property_filters",
             "label" => __( "Baths Min", "cl-listing-collection" ),
             "type" => "number",
+        ];
+
+        $this->controls["sqft_min"] = [
+            "group" => "property_filters",
+            "label" => __( "Square Feet Min", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["sqft_max"] = [
+            "group" => "property_filters",
+            "label" => __( "Square Feet Max", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["year_min"] = [
+            "group" => "property_filters",
+            "label" => __( "Year Built Min", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["year_max"] = [
+            "group" => "property_filters",
+            "label" => __( "Year Built Max", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["acres_min"] = [
+            "group" => "property_filters",
+            "label" => __( "Acreage Min", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["acres_max"] = [
+            "group" => "property_filters",
+            "label" => __( "Acreage Max", "cl-listing-collection" ),
+            "type" => "number",
+            "min" => 0,
+        ];
+
+        $this->controls["primary_bedroom_main_level"] = [
+            "group" => "property_filters",
+            "label" => __( "Primary Bedroom on Main Level", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "" => __( "Any", "cl-listing-collection" ),
+                "true" => __( "Yes", "cl-listing-collection" ),
+            ],
+            "default" => "",
         ];
 
         $this->controls["structured_data_mode"] = [
@@ -399,6 +455,14 @@ class Listing_Carousel_Element extends Element {
         $baths_min = \cllc_sanitize_int( $settings["baths_min"] ?? null );
         if ( null !== $baths_min && $baths_min > 0 ) {
             $filters["baths_min"] = $baths_min;
+        }
+
+        $this->add_nonnegative_numeric_range_filters( $filters, $settings, "sqft_min", "sqft_max", false );
+        $this->add_nonnegative_numeric_range_filters( $filters, $settings, "year_min", "year_max", true );
+        $this->add_nonnegative_numeric_range_filters( $filters, $settings, "acres_min", "acres_max", false );
+
+        if ( ( $settings["primary_bedroom_main_level"] ?? null ) === "true" ) {
+            $filters["primary_bedroom_main_level"] = "true";
         }
 
         $response = \cllc_fetch_listings( $filters );
@@ -1011,6 +1075,34 @@ class Listing_Carousel_Element extends Element {
         }
 
         return array_values( array_unique( $resolved ) );
+    }
+
+    private function add_nonnegative_numeric_range_filters( array &$filters, array $settings, string $min_key, string $max_key, bool $integer ): void {
+        $sanitize = static function ( $value ) use ( $integer ) {
+            if ( ! is_numeric( $value ) ) {
+                return null;
+            }
+
+            $numeric_value = (float) $value;
+            if ( $numeric_value < 0 || ( $integer && floor( $numeric_value ) !== $numeric_value ) ) {
+                return null;
+            }
+
+            return $integer ? \cllc_sanitize_int( $value ) : \cllc_sanitize_float( $value );
+        };
+
+        $min_value = $sanitize( $settings[ $min_key ] ?? null );
+        $max_value = $sanitize( $settings[ $max_key ] ?? null );
+        if ( null !== $min_value && null !== $max_value && $min_value > $max_value ) {
+            return;
+        }
+
+        if ( null !== $min_value ) {
+            $filters[ $min_key ] = $min_value;
+        }
+        if ( null !== $max_value ) {
+            $filters[ $max_key ] = $max_value;
+        }
     }
 
     /**

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CL Listing Collection
  * Description: Bricks element that renders a listing carousel from the canonical cl-reso-link API.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Author: Charleston Livability
  */
 
@@ -12,7 +12,7 @@ if ( ! defined( "ABSPATH" ) ) {
 
 define( "CLLC_PLUGIN_FILE", __FILE__ );
 define( "CLLC_PLUGIN_DIR", plugin_dir_path( __FILE__ ) );
-define( "CLLC_VERSION", "0.4.0" );
+define( "CLLC_VERSION", "0.5.0" );
 
 add_action( "init", "cllc_register_bricks_elements", 11 );
 add_action( "init", "cllc_maybe_clear_bricks_cache", 12 );
@@ -156,7 +156,7 @@ function cllc_format_price( $value ): string {
 /**
  * Fetch listings via the canonical cl-reso-link endpoint.
  *
- * @return array{ok:bool,code:int,items:array,error:bool,decoded:bool,state:string}
+ * @return array{ok:bool,code:int,items:array,meta:array,error:bool,decoded:bool,state:string}
  */
 function cllc_fetch_listings( array $params ): array {
     static $cache = [];
@@ -183,6 +183,7 @@ function cllc_fetch_listings( array $params ): array {
             "ok" => false,
             "code" => 0,
             "items" => [],
+            "meta" => [],
             "error" => true,
             "decoded" => false,
             "state" => "",
@@ -195,11 +196,13 @@ function cllc_fetch_listings( array $params ): array {
     $decoded = json_decode( $body, true );
     $decoded_ok = json_last_error() === JSON_ERROR_NONE;
     $items = [];
+    $meta = [];
     $state = "";
     $shape_valid = false;
     if ( $decoded_ok && is_array( $decoded ) ) {
         if ( isset( $decoded["data"]["items"] ) && is_array( $decoded["data"]["items"] ) ) {
             $items = $decoded["data"]["items"];
+            $meta = isset( $decoded["meta"] ) && is_array( $decoded["meta"] ) ? $decoded["meta"] : [];
             $shape_valid = true;
         } elseif ( cllc_is_soft_failure_payload( $decoded ) ) {
             $items = $decoded["items"];
@@ -217,6 +220,7 @@ function cllc_fetch_listings( array $params ): array {
         "ok" => $ok,
         "code" => $code,
         "items" => $items,
+        "meta" => $meta,
         "error" => $error,
         "decoded" => $decoded_ok,
         "state" => $state,

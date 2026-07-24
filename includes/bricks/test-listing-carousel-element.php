@@ -36,6 +36,14 @@ namespace {
         return htmlspecialchars( (string) $text, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8" );
     }
 
+    function esc_attr( $value ): string {
+        return htmlspecialchars( (string) $value, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8" );
+    }
+
+    function esc_url_raw( $value ): string {
+        return trim( (string) $value );
+    }
+
     function sanitize_text_field( $value ): string {
         return trim( strip_tags( (string) $value ) );
     }
@@ -59,6 +67,18 @@ namespace {
         return $value;
     }
 
+    function clpc_normalize_card_view_model( array $view_model ): array {
+        return $view_model;
+    }
+
+    function clpc_render_property_card( array $view_model ): string {
+        return '<article class="clpc-card">' . esc_html( (string) ( $view_model["address_display"] ?? "" ) ) . '</article>';
+    }
+
+    function esc_html( $value ): string {
+        return htmlspecialchars( (string) $value, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8" );
+    }
+
     function cllc_is_blank( $value ): bool {
         return null === $value || ( is_string( $value ) && trim( $value ) === "" );
     }
@@ -72,9 +92,13 @@ namespace {
     }
 
     $cllc_test_filters = null;
+    $cllc_test_response = null;
     function cllc_fetch_listings( array $filters ): array {
-        global $cllc_test_filters;
+        global $cllc_test_filters, $cllc_test_response;
         $cllc_test_filters = $filters;
+        if ( is_array( $cllc_test_response ) ) {
+            return $cllc_test_response;
+        }
         return [ "items" => [], "error" => false ];
     }
 
@@ -98,9 +122,10 @@ namespace {
         echo "[FAIL] " . $message . PHP_EOL;
     }
 
-    function render_with_settings( Listing_Carousel_Element $element, array $settings ): array {
-        global $cllc_test_filters;
+    function render_with_settings( Listing_Carousel_Element $element, array $settings, ?array $response = null ): array {
+        global $cllc_test_filters, $cllc_test_response;
         $cllc_test_filters = null;
+        $cllc_test_response = $response;
         $element->settings = $settings;
         ob_start();
         $element->render();
@@ -166,6 +191,142 @@ namespace {
     assert_true( ( $property_type_control["default"] ?? null ) === "Residential", "Property Type: Residential is the default" );
     assert_true( ! array_key_exists( "multiple", $property_type_control ), "Property Type: single-select control" );
     assert_true( ! array_key_exists( "community" . "_key_input", $element->controls ), "Geography: legacy Community Key control removed" );
+
+    $location_source_control = $element->controls["location_source"] ?? [];
+    assert_true(
+        ( $location_source_control["label"] ?? null ) === "Location Source"
+            && ( $location_source_control["options"] ?? null ) === [ "canonical_shape" => "Canonical geo shape", "topic" => "Topic" ]
+            && ( $location_source_control["default"] ?? null ) === "canonical_shape",
+        "Geography: location source defaults to canonical shape for saved elements"
+    );
+    assert_true(
+        isset( $element->controls["topic_id_input"], $element->controls["topic_mode"], $element->controls["topic_feature_id_input"] )
+            && ( $element->controls["topic_mode"]["options"] ?? null ) === [ "entire_topic" => "Entire topic", "selected_feature" => "Selected topic feature" ],
+        "Geography: topic controls are registered"
+    );
+
+    [ $filters ] = render_with_settings( $element, [ "geo_shape_id_input" => "downtown_charleston__ansonborough" ] );
+    assert_true(
+        is_array( $filters ) && ( $filters["geo_shape_id"] ?? null ) === "downtown_charleston__ansonborough"
+            && ! isset( $filters["topic_id"], $filters["topic_feature_id"] ),
+        "Geography: legacy settings remain canonical and do not send topic fields"
+    );
+
+    [ $filters ] = render_with_settings( $element, [
+        "location_source" => "canonical_shape",
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "selected_feature",
+        "topic_feature_id_input" => "str1",
+    ] );
+    assert_true(
+        is_array( $filters ) && ( $filters["geo_shape_id"] ?? null ) === "downtown_charleston__ansonborough"
+            && ! isset( $filters["topic_id"], $filters["topic_feature_id"] ),
+        "Geography: canonical mode omits inactive topic settings"
+    );
+
+    [ $filters ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "geo_shape_id_input" => "downtown_charleston__ansonborough",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "entire_topic",
+        "topic_feature_id_input" => "str1",
+    ], [ "items" => [], "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "entire_topic" ] ], "error" => false ] );
+    assert_true(
+        is_array( $filters ) && ( $filters["topic_id"] ?? null ) === "short-term-rentals"
+            && ! isset( $filters["topic_feature_id"], $filters["geo_shape_id"] ),
+        "Geography: entire-topic mode sends only topic_id and ignores inactive settings"
+    );
+
+    [ $filters ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "selected_feature",
+        "topic_feature_id_input" => "str1",
+    ], [ "items" => [], "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "selected_feature", "topic_feature_id" => "str1" ] ], "error" => false ] );
+    assert_true(
+        is_array( $filters ) && ( $filters["topic_id"] ?? null ) === "short-term-rentals"
+            && ( $filters["topic_feature_id"] ?? null ) === "str1" && ! isset( $filters["geo_shape_id"] ),
+        "Geography: selected-feature mode sends only the exact topic scope"
+    );
+
+    $topic_listing = [
+        "detail_url" => "https://example.test/listings/123",
+        "address" => [ "display" => "123 Canonical Street" ],
+        "compliance" => [],
+    ];
+    [ $filters, $html ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "entire_topic",
+        "structured_data_mode" => "off",
+    ], [
+        "items" => [ $topic_listing ],
+        "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "entire_topic" ] ],
+        "error" => false,
+    ] );
+    assert_true(
+        is_array( $filters ) && str_contains( $html, "123 Canonical Street" ) && ! str_contains( $html, "No listings available." ),
+        "Topic SSR: matching entire-topic scope renders canonical response items"
+    );
+
+    [ $filters, $html ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "selected_feature",
+        "topic_feature_id_input" => "str1",
+        "structured_data_mode" => "off",
+    ], [
+        "items" => [ $topic_listing ],
+        "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "selected_feature", "topic_feature_id" => "str1" ] ],
+        "error" => false,
+    ] );
+    assert_true(
+        is_array( $filters ) && str_contains( $html, "123 Canonical Street" ) && ! str_contains( $html, "No listings available." ),
+        "Topic SSR: matching selected-feature scope renders canonical response items"
+    );
+
+    [ $filters, $html ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "entire_topic",
+        "structured_data_mode" => "off",
+    ], [
+        "items" => [ $topic_listing ],
+        "meta" => [],
+        "error" => false,
+    ] );
+    assert_true(
+        is_array( $filters ) && str_contains( $html, "No listings available." ) && ! str_contains( $html, "123 Canonical Street" ),
+        "Topic SSR: missing applied scope does not render returned listings"
+    );
+
+    [ $filters, $html ] = render_with_settings( $element, [
+        "location_source" => "topic",
+        "topic_id_input" => "short-term-rentals",
+        "topic_mode" => "entire_topic",
+    ], [
+        "items" => [],
+        "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "entire_topic" ] ],
+        "error" => false,
+    ] );
+    assert_true(
+        is_array( $filters ) && str_contains( $html, "No listings available." ),
+        "Topic SSR: matching scope with zero results remains the normal empty state"
+    );
+
+    foreach (
+        [
+            [ [ "location_source" => "topic", "topic_mode" => "entire_topic" ], "topic mode without a topic ID fails closed" ],
+            [ [ "location_source" => "topic", "topic_id_input" => "short-term-rentals", "topic_mode" => "selected_feature" ], "selected topic mode without a child ID fails closed" ],
+            [ [ "location_source" => "topic", "topic_id_input" => "short_term_rentals" ], "underscore topic ID fails closed" ],
+            [ [ "location_source" => "unknown", "geo_shape_id_input" => "downtown_charleston__ansonborough" ], "unknown location source fails closed" ],
+        ] as $invalid_geography_case
+    ) {
+        [ $invalid_settings, $message ] = $invalid_geography_case;
+        [ $filters, $html ] = render_with_settings( $element, $invalid_settings );
+        assert_true( null === $filters && str_contains( $html, "No listings available." ), "Geography: " . $message );
+    }
 
     $style_control = $element->controls["style"] ?? [];
     assert_true(
@@ -431,6 +592,35 @@ namespace {
     assert_true( null === $filters && str_contains( $html, "No listings available." ), "Geography: missing geo shape input renders safe empty state" );
 
     $reflection = new \ReflectionClass( $element );
+    $scope_method = $reflection->getMethod( "response_matches_geographic_scope" );
+    $scope_method->setAccessible( true );
+    $entire_scope = [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "entire_topic" ];
+    assert_true(
+        true === $scope_method->invoke( $element, [ "meta" => [ "applied_geo_scope" => $entire_scope ] ], $entire_scope ),
+        "Topic response: entire-topic applied scope is required and accepted exactly"
+    );
+    assert_true(
+        false === $scope_method->invoke( $element, [ "meta" => [] ], $entire_scope ),
+        "Topic response: missing applied scope fails closed"
+    );
+    assert_true(
+        false === $scope_method->invoke( $element, [ "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "other-topic", "mode" => "entire_topic" ] ] ], $entire_scope ),
+        "Topic response: wrong topic ID fails closed"
+    );
+    $selected_scope = [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "selected_feature", "topic_feature_id" => "str1" ];
+    assert_true(
+        true === $scope_method->invoke( $element, [ "meta" => [ "applied_geo_scope" => $selected_scope ] ], $selected_scope ),
+        "Topic response: selected-feature applied scope is accepted exactly"
+    );
+    assert_true(
+        false === $scope_method->invoke( $element, [ "meta" => [ "applied_geo_scope" => [ "kind" => "topic", "topic_id" => "short-term-rentals", "mode" => "selected_feature", "topic_feature_id" => "str2" ] ] ], $selected_scope ),
+        "Topic response: wrong child ID fails closed"
+    );
+    assert_true(
+        true === $scope_method->invoke( $element, [ "meta" => [] ], [ "kind" => "canonical_shape", "geo_shape_id" => "downtown_charleston__ansonborough" ] ),
+        "Canonical response: existing response contract remains unchanged"
+    );
+
     $display_method = $reflection->getMethod( "resolve_display_preferences" );
     $display_method->setAccessible( true );
     $display_preferences = $display_method->invoke( $element, [

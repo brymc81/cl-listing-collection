@@ -31,11 +31,16 @@ The carousel does not:
 
 ### Builder / Runtime Geography
 
-- `geo_shape_id_input` is the sole supported builder control key.
+- `location_source` selects `canonical_shape` (default) or `topic`.
+- Existing saved elements without `location_source` are canonical and continue to use `geo_shape_id_input` without a resave.
 - Dynamic values must be resolved with Bricks runtime methods before sanitization.
 - The resolved value must be sanitized after dynamic resolution.
-- A valid resolved `geo_shape_id_input` maps directly to canonical `geo_shape_id`.
-- If no valid canonical geographic input resolves, render the safe empty state.
+- Canonical mode maps a valid resolved `geo_shape_id_input` directly to canonical `geo_shape_id`.
+- Topic mode maps a valid `topic_id_input` to `topic_id`. `topic_mode=selected_feature` additionally requires `topic_feature_id_input`; `entire_topic` omits any inactive child input.
+- The carousel sends exactly one geographic scope: canonical `geo_shape_id`, entire-topic `topic_id`, or selected-feature `topic_id` plus `topic_feature_id`. It never combines canonical and topic fields.
+- Topic and child identifiers are opaque values owned by `cl-reso-link`; this plugin never reads source GeoJSON, resolves child geography, or interprets identifiers such as `str1`–`str9`.
+- Topic responses must contain an exact matching `meta.applied_geo_scope`. Missing or mismatched confirmation fails closed and renders no returned listings. A valid scope with zero items remains the normal empty result.
+- If no valid active geographic input resolves, render the safe empty state.
 - The prior Community Key fallback is removed; saved values from that retired control are ignored.
 
 ### Query Controls
@@ -45,6 +50,8 @@ The carousel may forward only allowlisted canonical search options to `cl-reso-l
 Allowed today:
 
 - `geo_shape_id`
+- `topic_id`
+- `topic_feature_id`
 - `limit`
 - `sort`
 - `order`
@@ -214,7 +221,7 @@ If the requested display surface cannot be justified by the canonical compliance
 
 Before a carousel refactor is accepted:
 
-1. Confirm the carousel resolves `geo_shape_id_input` first and validates it before request construction.
+1. Confirm the carousel resolves and validates the active location-source input before request construction.
 2. Confirm the query sent to `cl-reso-link` uses canonical filters only.
 3. Confirm no raw MLS provider call exists in the carousel path.
 4. Confirm SSR output renders valid cards without JavaScript.
@@ -225,5 +232,6 @@ Before a carousel refactor is accepted:
 9. Confirm the card layer can be reused from `cl-property-components` without becoming a data authority.
 10. Confirm the implementation still points to `cl-reso-link/docs/*` for engine and compliance authority rather than duplicating schema details locally.
 11. Confirm rendered cards and ItemList entries include only canonical payload URLs and never local `/listing/{id}/` URL construction.
-12. Confirm `geo_shape_id` is included in request filters only when explicitly supplied via builder/runtime input.
-13. Confirm missing or invalid `geo_shape_id_input` renders the safe empty state without a geographic fallback.
+12. Confirm exactly one geographic scope is included in request filters: canonical shape, entire topic, or selected topic feature.
+13. Confirm missing or invalid active geographic input renders the safe empty state without a geographic fallback.
+14. Confirm topic responses contain an exact matching `meta.applied_geo_scope` before any listing is rendered.

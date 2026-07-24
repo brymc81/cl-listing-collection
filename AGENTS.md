@@ -27,11 +27,15 @@ This plugin consumes canonical listing data from `cl-reso-link` and renders SSR-
 
 ## Geographic Resolution
 
-- `geo_shape_id_input` is the sole supported builder control key for geography-scoped listing collections.
+- `location_source` selects either `canonical_shape` (the default) or `topic`.
+- Existing saved elements without `location_source` are canonical and continue to use `geo_shape_id_input`.
 - Resolve dynamic values with Bricks runtime methods before sanitizing.
 - Sanitize after dynamic resolution.
-- Convert resolved `geo_shape_id_input` to canonical `geo_shape_id` request filter.
-- If no valid canonical geographic input is resolved, render the safe empty state.
+- Canonical mode converts `geo_shape_id_input` to the canonical `geo_shape_id` request filter.
+- Topic mode converts `topic_id_input`, and only in selected-feature mode `topic_feature_id_input`, to engine request filters. IDs are opaque; this plugin must not infer their geographic meaning.
+- Send exactly one geographic scope. Never send `geo_shape_id` with `topic_id`, or `topic_feature_id` without `topic_id`.
+- Topic responses must confirm the exact requested `meta.applied_geo_scope`; otherwise fail closed.
+- If no valid active geographic input is resolved, render the safe empty state.
 
 ## Canonical Data Use
 

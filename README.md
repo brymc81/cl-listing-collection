@@ -7,7 +7,9 @@ Start with `docs/DOCS_AUTHORITY.md` for current documentation authority. Listing
 
 ## Inputs
 - Builder controls:
-  - `geo_shape_id_input`
+  - `location_source` (`canonical_shape`, the backward-compatible default, or `topic`)
+  - canonical mode: `geo_shape_id_input`
+  - topic mode: `topic_id_input`, `topic_mode` (`entire_topic` or `selected_feature`), and `topic_feature_id_input` for selected-feature mode
   - canonical listing filters such as `limit`, `sort`, `order`, `property_type`, `property_subtype`, `style`, `status`, `price_min`, `price_max`, `beds_min`, `baths_min`, `sqft_min`, `sqft_max`, `year_min`, `year_max`, `acres_min`, `acres_max`, and `primary_bedroom_main_level`
 
 `property_type` is a single-select broad category. Its canonical values are `Residential` (the default), `Rental`, `Multi-Family`, and `Vacant Land`. `property_subtype` remains a separate narrower filter.
@@ -26,7 +28,11 @@ Property-characteristic controls forward nonblank canonical filter values only. 
 - `/api/properties/search`
 
 ## Known Constraints
-- `geo_shape_id_input` is the sole builder-facing geographic control; without a valid resolved value, the carousel renders its safe empty state
+- Existing saved elements without `location_source` remain in canonical mode and continue using `geo_shape_id_input` without a resave
+- Canonical and topic geography are mutually exclusive. The carousel sends either `geo_shape_id`, `topic_id`, or `topic_id` plus `topic_feature_id`—never a mixed request
+- Topic IDs and child IDs are opaque canonical identifiers supplied to `cl-reso-link`; the carousel does not read GeoJSON or infer geography
+- Topic responses must return matching `meta.applied_geo_scope`; a missing or mismatched scope renders the safe empty state rather than unscoped listings
+- The initial engine topic is `short-term-rentals`; its current child identifiers are `str1` through `str9` and carry no local semantic interpretation
 - The prior Community Key fallback has been removed; saved values under that legacy control are ignored
 - dynamic geographic values are resolved with Bricks-native `render_dynamic_data()`, then sanitized
 - this plugin consumes canonical listing fields only and does not perform client-side schema shaping

@@ -53,6 +53,18 @@ class Listing_Carousel_Element extends Element {
     }
 
     public function set_controls() {
+        $this->controls["location_source"] = [
+            "tab" => "content",
+            "group" => "query",
+            "label" => __( "Location Source", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "canonical_shape" => __( "Canonical geo shape", "cl-listing-collection" ),
+                "topic" => __( "Topic", "cl-listing-collection" ),
+            ],
+            "default" => "canonical_shape",
+        ];
+
         $this->controls["geo_shape_id_input"] = [
             "tab" => "content",
             "group" => "query",
@@ -60,6 +72,48 @@ class Listing_Carousel_Element extends Element {
             "type" => "text",
             "placeholder" => "downtown_charleston__ansonborough",
             "hasDynamicData" => true,
+            "required" => [
+                [ "location_source", "=", "canonical_shape" ],
+            ],
+        ];
+
+        $this->controls["topic_id_input"] = [
+            "tab" => "content",
+            "group" => "query",
+            "label" => __( "Topic ID", "cl-listing-collection" ),
+            "type" => "text",
+            "placeholder" => "short-term-rentals",
+            "hasDynamicData" => true,
+            "required" => [
+                [ "location_source", "=", "topic" ],
+            ],
+        ];
+
+        $this->controls["topic_mode"] = [
+            "group" => "query",
+            "label" => __( "Topic Coverage", "cl-listing-collection" ),
+            "type" => "select",
+            "options" => [
+                "entire_topic" => __( "Entire topic", "cl-listing-collection" ),
+                "selected_feature" => __( "Selected topic feature", "cl-listing-collection" ),
+            ],
+            "default" => "entire_topic",
+            "required" => [
+                [ "location_source", "=", "topic" ],
+            ],
+        ];
+
+        $this->controls["topic_feature_id_input"] = [
+            "tab" => "content",
+            "group" => "query",
+            "label" => __( "Topic Feature ID", "cl-listing-collection" ),
+            "type" => "text",
+            "placeholder" => "str1",
+            "hasDynamicData" => true,
+            "required" => [
+                [ "location_source", "=", "topic" ],
+                [ "topic_mode", "=", "selected_feature" ],
+            ],
         ];
 
         $this->controls["limit"] = [
@@ -377,9 +431,9 @@ class Listing_Carousel_Element extends Element {
     public function render() {
         $settings = is_array( $this->settings ) ? $this->settings : [];
 
-        $geo_shape_id = $this->resolve_geo_shape_id_input( $settings );
-        if ( "" === $geo_shape_id ) {
-            $this->log_warning( "Missing required geographic input; rendering empty state." );
+        $geographic_scope = $this->build_geographic_scope( $settings );
+        if ( null === $geographic_scope ) {
+            $this->log_warning( "Invalid or missing geographic input; rendering empty state." );
             $this->enqueue_assets();
             $this->render_empty_state();
             return;
@@ -411,7 +465,9 @@ class Listing_Carousel_Element extends Element {
             "sort" => $normalized_sort["sort"],
             "order" => $normalized_sort["order"],
         ];
-        $filters["geo_shape_id"] = $geo_shape_id;
+        foreach ( $geographic_scope["params"] as $key => $value ) {
+            $filters[ $key ] = $value;
+        }
 
         $property_type = $this->normalize_property_type_value( $settings["property_type"] ?? "Residential" );
         if ( "" !== $property_type ) {
@@ -470,6 +526,9 @@ class Listing_Carousel_Element extends Element {
 
         if ( ! empty( $response["error"] ) ) {
             $this->log_warning( "Listings request failed; rendering empty state." );
+            $items = [];
+        } elseif ( ! $this->response_matches_geographic_scope( $response, $geographic_scope["expected_scope"] ) ) {
+            $this->log_warning( "Listings response did not confirm the requested geographic scope; rendering empty state." );
             $items = [];
         }
 
@@ -1154,6 +1213,105 @@ class Listing_Carousel_Element extends Element {
         return 1 === preg_match( '/^\{[a-z0-9_:-]+\}$/i', trim( $value ) );
     }
 
+    /**
+     * Resolve exactly one canonical geographic scope from builder settings.
+     *
+     * Topic identifiers are opaque engine identifiers. This consumer never
+     * resolves topic geometry or gives child IDs geographic meaning.
+     *
+     * @return array{params:array<string,string>,expected_scope:array<string,string>}|null
+     */
+    private function build_geographic_scope( array $settings ): ?array {
+        $location_source = isset( $settings["location_source"] )
+            ? strtolower( trim( sanitize_text_field( (string) $settings["location_source"] ) ) )
+            : "canonical_shape";
+
+        // Saved elements from before this control existed remain canonical.
+        if ( "canonical_shape" === $location_source ) {
+            $geo_shape_id = $this->resolve_geo_shape_id_input( $settings );
+            if ( "" === $geo_shape_id ) {
+                return null;
+            }
+
+            return [
+                "params" => [ "geo_shape_id" => $geo_shape_id ],
+                "expected_scope" => [ "kind" => "canonical_shape", "geo_shape_id" => $geo_shape_id ],
+            ];
+        }
+
+        if ( "topic" !== $location_source ) {
+            $this->log_warning( "Invalid location_source setting; rendering empty state." );
+            return null;
+        }
+
+        $topic_id = $this->sanitize_topic_id(
+            $this->resolve_dynamic_text_setting( $settings, [ "topic_id_input" ] )
+        );
+        if ( "" === $topic_id ) {
+            return null;
+        }
+
+        $topic_mode = isset( $settings["topic_mode"] )
+            ? strtolower( trim( sanitize_text_field( (string) $settings["topic_mode"] ) ) )
+            : "entire_topic";
+        if ( ! in_array( $topic_mode, [ "entire_topic", "selected_feature" ], true ) ) {
+            $this->log_warning( "Invalid topic_mode setting; rendering empty state." );
+            return null;
+        }
+
+        $params = [ "topic_id" => $topic_id ];
+        $expected_scope = [
+            "kind" => "topic",
+            "topic_id" => $topic_id,
+            "mode" => $topic_mode,
+        ];
+        if ( "selected_feature" === $topic_mode ) {
+            $topic_feature_id = $this->sanitize_topic_feature_id(
+                $this->resolve_dynamic_text_setting( $settings, [ "topic_feature_id_input" ] )
+            );
+            if ( "" === $topic_feature_id ) {
+                return null;
+            }
+
+            $params["topic_feature_id"] = $topic_feature_id;
+            $expected_scope["topic_feature_id"] = $topic_feature_id;
+        }
+
+        return [
+            "params" => $params,
+            "expected_scope" => $expected_scope,
+        ];
+    }
+
+    /**
+     * Topic responses must prove that cl-reso-link applied the exact scope.
+     * Canonical shape responses retain their established response contract.
+     */
+    private function response_matches_geographic_scope( array $response, array $expected_scope ): bool {
+        if ( ( $expected_scope["kind"] ?? "" ) !== "topic" ) {
+            return true;
+        }
+
+        $meta = $response["meta"] ?? null;
+        $applied_scope = is_array( $meta ) ? ( $meta["applied_geo_scope"] ?? null ) : null;
+        if ( ! is_array( $applied_scope ) ) {
+            return false;
+        }
+
+        foreach ( [ "kind", "topic_id", "mode" ] as $key ) {
+            if ( ! isset( $expected_scope[ $key ] ) || ! isset( $applied_scope[ $key ] ) || $applied_scope[ $key ] !== $expected_scope[ $key ] ) {
+                return false;
+            }
+        }
+
+        if ( ( $expected_scope["mode"] ?? "" ) === "selected_feature" ) {
+            return isset( $expected_scope["topic_feature_id"], $applied_scope["topic_feature_id"] )
+                && $applied_scope["topic_feature_id"] === $expected_scope["topic_feature_id"];
+        }
+
+        return ! isset( $applied_scope["topic_feature_id"] );
+    }
+
     private function resolve_geo_shape_id_input( array $settings ): string {
         $resolved_value = $this->resolve_dynamic_text_setting(
             $settings,
@@ -1202,6 +1360,34 @@ class Listing_Carousel_Element extends Element {
 
         if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
             $this->log_warning( "Invalid geo_shape_id_input format; rendering empty state." );
+            return "";
+        }
+
+        return $normalized;
+    }
+
+    private function sanitize_topic_id( string $value ): string {
+        $normalized = strtolower( trim( sanitize_text_field( $value ) ) );
+        if ( "" === $normalized ) {
+            return "";
+        }
+
+        if ( 1 !== preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $normalized ) || strlen( $normalized ) > 64 ) {
+            $this->log_warning( "Invalid topic_id_input format; rendering empty state." );
+            return "";
+        }
+
+        return $normalized;
+    }
+
+    private function sanitize_topic_feature_id( string $value ): string {
+        $normalized = strtolower( trim( sanitize_text_field( $value ) ) );
+        if ( "" === $normalized ) {
+            return "";
+        }
+
+        if ( 1 !== preg_match( '/^[a-z0-9_-]{1,64}$/', $normalized ) ) {
+            $this->log_warning( "Invalid topic_feature_id_input format; rendering empty state." );
             return "";
         }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 - 2026-08-15
+### Changed
+- Release the current topic-scope and canonical-filter carousel implementation under a version distinct from the pre-existing `v0.5.0` tag. No runtime behavior changed in this reconciliation.
+
 ## 0.5.0 - 2026-07-24
 ### Added
 - Topic-backed geographic scopes for the `cl-listing-carousel`: entire-topic and selected-feature requests through canonical `cl-reso-link` identifiers.

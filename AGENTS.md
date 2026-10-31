@@ -6,6 +6,13 @@ Collection-level presentation adapter for listing embeds and the `cl-listing-car
 
 This plugin consumes canonical listing data from `cl-reso-link` and renders SSR-first collection markup with optional frontend enhancement.
 
+## Working in this repository
+
+- Before substantial work, inspect the current repository, applicable instructions, relevant contracts, HEAD, and working-tree state. Preserve unrelated changes.
+- Consult broader host, shared development, and production guidance when relevant and available; do not assume parent instructions are automatically loaded.
+- Inspection, local edits, commits, pushes, deployment, and production or external-service changes are separate permissions. Follow the task's scope; do not infer authorization for one from another.
+- Validate the changed surface and report material changes, current Git status, and any incomplete or unverified work.
+
 ## Authority
 
 - `cl-reso-link/docs/*` owns canonical search, listing, geography, map, and compliance contracts.

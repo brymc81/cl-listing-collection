@@ -9,6 +9,12 @@
   min-width: 0;
 }
 
+.cl-listing-carousel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .cl-listing-carousel .cl-listing-grid {
   display: flex;
   overflow-x: auto;
@@ -20,7 +26,7 @@
 }
 
 .cl-listing-carousel .cl-listing-grid .clpc-card {
-  flex: 0 0 var(--cllc-card-width, clamp(240px, 72vw, 360px));
+  flex: 0 0 min(100%, var(--cllc-card-width, clamp(240px, 72vw, 360px)));
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
